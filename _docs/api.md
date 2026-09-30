@@ -1,0 +1,276 @@
+# Invoice Filler API
+
+## Purpose
+
+This document describes the HTTP API for the invoice filler MVP. The API is intended
+for a browser client and a single configured Google Docs template. It does not expose
+Google credentials, allow users to select arbitrary templates, or persist invoices.
+
+## General conventions
+
+- Base path: `/api`
+- Transport: HTTPS in deployed environments
+- Request and JSON response encoding: UTF-8
+- JSON media type: `application/json`
+- Dates: ISO 8601 calendar dates in `YYYY-MM-DD` format
+- Monetary values: decimal strings, never binary floating-point JSON numbers
+- Currency: uppercase ISO 4217 code, for example `EUR`
+- Request IDs: returned in the `X-Request-ID` header and included in error bodies
+- Sensitive values must not appear in URLs, logs, request IDs, or error messages
+- Generated PDFs should use `Cache-Control: no-store`
+
+The backend is authoritative for template configuration, field detection, validation,
+normalization, calculations, and generated output. The client must not be trusted to
+provide a calculated total or template identifier.
+
+## Endpoints
+
+### `GET /api/health`
+
+Returns a lightweight liveness response. It should not require Google credentials or
+make a provider call.
+
+Successful response:
+
+```http
+200 OK
+Content-Type: application/json
+```
+
+```json
+{
+  "status": "ok"
+}
+```
+
+### `GET /api/ready`
+
+Reports whether the service has the configuration required to handle requests. This
+check may validate configuration locally, but should avoid mutating Google documents.
+
+Successful response:
+
+```json
+{
+  "status": "ready"
+}
+```
+
+If required configuration is missing or unusable, return `503 Service Unavailable`
+with the standard error format. Do not include credentials or secret values.
+
+### `GET /api/template/fields`
+
+Loads the configured template and returns the fields detected for user review. The
+endpoint reads the master template but must never modify it.
+
+Successful response:
+
+```json
+{
+  "template": {
+    "name": "configured-invoice-template",
+    "version": "2026-01"
+  },
+  "fields": [
+    {
+      "name": "service_start_date",
+      "label": "Service date",
+      "type": "date",
+      "value": "2026-09-30",
+      "required": true,
+      "calculated": false,
+      "confidence": "high",
+      "source": {
+        "section": "body",
+        "location": "table:0/row:1/cell:1"
+      },
+      "warnings": []
+    },
+    {
+      "name": "total_amount",
+      "label": "Total",
+      "type": "money",
+      "value": null,
+      "required": true,
+      "calculated": true,
+      "confidence": "high",
+      "source": {
+        "section": "body",
+        "location": "table:1/row:3/cell:1"
+      },
+      "warnings": []
+    }
+  ],
+  "warnings": []
+}
+```
+
+Confidence values are `high`, `medium`, or `low`. Ambiguous, missing, duplicate, or
+unsupported matches must be represented in `warnings`; they must not be silently
+selected as authoritative values.
+
+### `POST /api/invoices/preview`
+
+Validates invoice input, normalizes accepted values, and calculates the total without
+creating a Google document or storing invoice data.
+
+Request:
+
+```json
+{
+  "service_start_date": "2026-09-01",
+  "service_end_date": "2026-09-05",
+  "days_worked": "5",
+  "pay_per_day": "240.00",
+  "currency": "EUR",
+  "bank_name": "Example Bank",
+  "account_holder": "Test Account Holder",
+  "iban_or_account_number": "TEST-IBAN-0001",
+  "swift_or_bic": "TESTBIC1"
+}
+```
+
+Successful response:
+
+```json
+{
+  "input": {
+    "service_start_date": "2026-09-01",
+    "service_end_date": "2026-09-05",
+    "days_worked": "5",
+    "pay_per_day": "240.00",
+    "currency": "EUR",
+    "bank_name": "Example Bank",
+    "account_holder": "Test Account Holder",
+    "iban_or_account_number": "TEST-IBAN-0001",
+    "swift_or_bic": "TESTBIC1"
+  },
+  "calculation": {
+    "total_amount": "1200.00",
+    "currency": "EUR",
+    "rounding": "2 decimal places, half-up"
+  },
+  "ready_for_generation": true
+}
+```
+
+The backend calculates `total_amount` as `days_worked * pay_per_day`. The client may
+display its own live estimate for usability, but the server response is authoritative.
+`days_worked` is independent of the date range unless a separate business-day rule is
+explicitly added to the product.
+
+### `POST /api/invoices/generate`
+
+Validates the request again, recalculates the total, copies the configured Google Docs
+template, replaces confirmed values, exports the completed document to PDF, and cleans
+up the temporary document.
+
+Request body: same `InvoiceInput` schema as `/api/invoices/preview`.
+
+The server must use its configured template and must ignore any client-provided
+template ID or client-provided total. A request should be rejected if required field
+detection warnings have not been resolved by the client workflow.
+
+Successful response:
+
+```http
+200 OK
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="invoice-2026-09-01.pdf"
+Cache-Control: no-store
+X-Request-ID: req_01...
+```
+
+The response body is the PDF bytes. The filename must be generated by the server and
+must not contain unsanitized user input.
+
+The endpoint must not return a successful PDF if copying, replacement, export, or
+required validation fails. Cleanup must be attempted after a temporary document is
+created, including failure paths.
+
+## Shared input schema
+
+`InvoiceInput` contains:
+
+| Field | Type | Required | Rules |
+| --- | --- | --- | --- |
+| `service_start_date` | string | Yes | `YYYY-MM-DD` |
+| `service_end_date` | string | No | `YYYY-MM-DD`; define whether it may precede the start date |
+| `days_worked` | decimal string | Yes | Non-negative; supported precision and maximum must be documented |
+| `pay_per_day` | decimal string | Yes | Non-negative; supported precision and maximum must be documented |
+| `currency` | string | Yes | Uppercase supported ISO 4217 code |
+| `bank_name` | string | No | Maximum length; whitespace normalized |
+| `account_holder` | string | No | Maximum length; whitespace normalized |
+| `iban_or_account_number` | string | No | Maximum length; format rules depend on supported countries |
+| `swift_or_bic` | string | No | Maximum length; normalized consistently |
+
+The initial implementation should define whether bank fields are optional individually
+or required as a group. The API must apply that rule consistently in preview,
+generation, and template replacement.
+
+## Standard error format
+
+All non-PDF errors should use this shape:
+
+```json
+{
+  "error": {
+    "code": "validation_error",
+    "message": "One or more fields are invalid.",
+    "request_id": "req_01...",
+    "fields": [
+      {
+        "name": "pay_per_day",
+        "code": "invalid_decimal",
+        "message": "Enter a valid non-negative amount."
+      }
+    ]
+  }
+}
+```
+
+The `message` values are safe for end users. Provider details, stack traces, document
+IDs, credentials, bank values, and complete invoice contents belong only in redacted
+internal logs.
+
+Recommended status and error codes:
+
+| HTTP status | Code | Meaning |
+| --- | --- | --- |
+| `400` | `invalid_json` | Request body is malformed JSON |
+| `400` | `validation_error` | One or more input fields are invalid |
+| `409` | `field_review_required` | Detection is missing or ambiguous and needs user review |
+| `413` | `request_too_large` | Request exceeds configured size limits |
+| `429` | `rate_limited` | Caller exceeded the generation/request limit |
+| `502` | `provider_error` | Google or another configured provider returned an unusable response |
+| `503` | `service_not_ready` | Required configuration or dependency is unavailable |
+| `504` | `provider_timeout` | Provider operation exceeded its timeout |
+| `500` | `internal_error` | Unexpected server failure |
+
+## Idempotency and retries
+
+Preview requests should be safe to repeat. Generation requests may create temporary
+Google documents, so retries must be bounded and observable. If the implementation
+supports an `Idempotency-Key` request header, repeated requests with the same key and
+same input should not create uncontrolled duplicate documents; otherwise the frontend
+must prevent duplicate submissions and the backend must still clean up every created
+copy.
+
+## Security requirements
+
+- No authentication is required for the initial product, but deployment-level abuse controls are required.
+- Google credentials and the configured template ID remain backend-only configuration.
+- Restrict CORS to the deployed frontend origin.
+- Use HTTPS in production.
+- Do not log request bodies, bank fields, PDF bytes, or credentials.
+- Apply request and response size limits.
+- Use `Cache-Control: no-store` for generated PDFs and sensitive JSON responses where appropriate.
+- Return request IDs for support without deriving them from user or bank data.
+
+## Compatibility and change rules
+
+Changes to field names, calculation precision, error codes, or PDF response behavior
+are API changes and should update this document, frontend types, contract tests, and
+acceptance tests together. Additive response fields are preferred; removing or
+renaming fields requires a deliberate versioning or migration decision.
