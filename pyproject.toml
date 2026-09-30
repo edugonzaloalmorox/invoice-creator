@@ -1,0 +1,10 @@
+[project]
+name = "invoice-filler-backend"
+version = "0.1.0"
+description = "Backend scaffold for the invoice filler MVP"
+requires-python = ">=3.12"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests"]
+
