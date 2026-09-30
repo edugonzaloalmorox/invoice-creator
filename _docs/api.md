@@ -59,6 +59,25 @@ Successful response:
 If required configuration is missing or unusable, return `503 Service Unavailable`
 with the standard error format. Do not include credentials or secret values.
 
+### Configuration
+
+The application reads these environment variables at startup:
+
+| Variable | Required | Meaning |
+| --- | --- | --- |
+| `INVOICE_ENVIRONMENT` | Yes | Environment label, such as `development` or `production` |
+| `INVOICE_FRONTEND_ORIGIN` | Yes | One HTTP(S) browser origin, without a path |
+| `GOOGLE_CREDENTIALS_REFERENCE` | Yes | Reference to externally managed Google credentials; not credential contents |
+| `GOOGLE_TEMPLATE_ID` | Yes | Configured Google Docs template identifier |
+| `INVOICE_MAX_REQUEST_BYTES` | Yes | Positive request-body limit, maximum 10 MiB |
+| `INVOICE_MAX_RESPONSE_BYTES` | Yes | Positive response limit, maximum 50 MiB |
+| `GOOGLE_PROVIDER_CONNECT_TIMEOUT_SECONDS` | Yes | Positive provider connection timeout, maximum 300 seconds |
+| `GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS` | Yes | Positive provider read timeout, maximum 300 seconds |
+
+Missing, malformed, or out-of-range values make readiness fail. Public errors only
+identify the safe error class; they do not include configuration values or secret
+references. Liveness does not load or validate Google configuration.
+
 ### `GET /api/template/fields`
 
 Loads the configured template and returns the fields detected for user review. The
