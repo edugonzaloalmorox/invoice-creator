@@ -99,9 +99,20 @@ def load_config(values: dict[str, str] | None = None) -> ConfigLoad:
     template_id = _required(source, CONFIG_TEMPLATE_ID, errors)
 
     if frontend_origin:
-        parsed = urlparse(frontend_origin)
+        try:
+            parsed = urlparse(frontend_origin)
+            # Accessing ``port`` performs urllib's validation for non-numeric
+            # and out-of-range ports. An explicit empty port is invalid too.
+            port = parsed.port
+            has_empty_port = parsed.netloc.endswith(":")
+        except ValueError:
+            parsed = None
+            port = None
+            has_empty_port = False
+
         if (
-            parsed.scheme not in {"http", "https"}
+            parsed is None
+            or parsed.scheme not in {"http", "https"}
             or not parsed.hostname
             or parsed.path not in {"", "/"}
             or parsed.params
@@ -109,6 +120,8 @@ def load_config(values: dict[str, str] | None = None) -> ConfigLoad:
             or parsed.fragment
             or parsed.username
             or parsed.password
+            or has_empty_port
+            or port == 0
         ):
             errors.append(f"{CONFIG_FRONTEND_ORIGIN} must be an HTTP(S) origin")
 

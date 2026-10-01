@@ -73,6 +73,19 @@ class ConfigurationTest(unittest.TestCase):
         self.assertEqual(status["status"], "200 OK")
         self.assertEqual(payload, {"status": "ready"})
 
+    def test_invalid_frontend_origin_ports_are_not_ready(self):
+        for origin in ("https://example.test:bad", "https://example.test:99999"):
+            with self.subTest(origin=origin):
+                values = configured_values()
+                values[CONFIG_FRONTEND_ORIGIN] = origin
+                result = load_config(values)
+
+                self.assertFalse(result.ready)
+                self.assertIn(CONFIG_FRONTEND_ORIGIN, " ".join(result.errors))
+                status, payload = call(create_app(result.config), "/api/ready")
+                self.assertEqual(status["status"], "503 Service Unavailable")
+                self.assertEqual(payload["error"]["code"], "service_not_ready")
+
     def test_responses_include_request_id_and_no_store(self):
         status, payload = call(create_app(load_config(configured_values()).config), "/api/health")
         self.assertTrue(status["headers"]["X-Request-ID"].startswith("req_"))
