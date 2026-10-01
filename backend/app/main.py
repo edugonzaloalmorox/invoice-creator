@@ -73,6 +73,37 @@ def _invoice_payload(invoice: InvoiceInput) -> dict:
     }
 
 
+def _read_json_body(environ: dict, maximum: int) -> tuple[dict | None, tuple[str, str, str] | None]:
+    content_type = environ.get("CONTENT_TYPE", "").split(";", 1)[0].strip().lower()
+    if content_type != "application/json":
+        return None, ("400 Bad Request", "invalid_json", "Request body must be JSON.")
+    try:
+        content_length = int(environ.get("CONTENT_LENGTH", ""))
+    except (TypeError, ValueError):
+        content_length = None
+    if content_length is None or content_length <= 0:
+        return None, ("400 Bad Request", "invalid_json", "Request body must contain a JSON object.")
+    if content_length > maximum:
+        return None, ("413 Request Entity Too Large", "request_too_large", "Request body is too large.")
+    body = environ.get("wsgi.input", BytesIO()).read(content_length)
+    if len(body) != content_length:
+        return None, ("400 Bad Request", "invalid_json", "Request body must contain valid JSON.")
+    try:
+        payload = json.loads(body)
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None, ("400 Bad Request", "invalid_json", "Request body must contain valid JSON.")
+    if not isinstance(payload, dict):
+        return None, ("400 Bad Request", "invalid_json", "Request body must contain a JSON object.")
+    return payload, None
+
+
+def _validation_response(start_response: Callable, result, request_id: str) -> list[bytes] | None:
+    if result.valid:
+        return None
+    fields = [{"name": error.name, "code": error.code, "message": error.message} for error in result.errors]
+    return _error_response(start_response, "400 Bad Request", "validation_error", "One or more fields are invalid.", request_id, fields=fields)
+
+
 class Application:
     """Small WSGI application with configuration captured at startup."""
 
@@ -87,6 +118,10 @@ class Application:
             if environ.get("REQUEST_METHOD") != "POST":
                 return _json_response(start_response, "405 Method Not Allowed", {"error": {"code": "method_not_allowed", "message": "Only POST is supported.", "request_id": request_id}}, request_id)
             return self._preview(environ, start_response, request_id)
+        if path == "/api/invoices/generate":
+            if environ.get("REQUEST_METHOD") != "POST":
+                return _json_response(start_response, "405 Method Not Allowed", {"error": {"code": "method_not_allowed", "message": "Only POST is supported.", "request_id": request_id}}, request_id)
+            return self._generate(environ, start_response, request_id)
 
         if path == "/api/template/fields":
             if environ.get("REQUEST_METHOD") != "GET":
@@ -119,80 +154,14 @@ class Application:
                 request_id,
             )
 
-        content_type = environ.get("CONTENT_TYPE", "").split(";", 1)[0].strip().lower()
-        if content_type != "application/json":
-            return _error_response(
-                start_response,
-                "400 Bad Request",
-                "invalid_json",
-                "Request body must be JSON.",
-                request_id,
-            )
-
-        raw_length = environ.get("CONTENT_LENGTH", "")
-        try:
-            content_length = int(raw_length)
-        except (TypeError, ValueError):
-            content_length = None
-        if content_length is None or content_length <= 0:
-            return _error_response(
-                start_response,
-                "400 Bad Request",
-                "invalid_json",
-                "Request body must contain a JSON object.",
-                request_id,
-            )
-        if content_length > self.config_result.config.max_request_bytes:
-            return _error_response(
-                start_response,
-                "413 Request Entity Too Large",
-                "request_too_large",
-                "Request body is too large.",
-                request_id,
-            )
-
-        body = environ.get("wsgi.input", BytesIO()).read(content_length)
-        if len(body) != content_length:
-            return _error_response(
-                start_response,
-                "400 Bad Request",
-                "invalid_json",
-                "Request body must contain valid JSON.",
-                request_id,
-            )
-        try:
-            payload = json.loads(body)
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            return _error_response(
-                start_response,
-                "400 Bad Request",
-                "invalid_json",
-                "Request body must contain valid JSON.",
-                request_id,
-            )
-        if not isinstance(payload, dict):
-            return _error_response(
-                start_response,
-                "400 Bad Request",
-                "invalid_json",
-                "Request body must contain a JSON object.",
-                request_id,
-            )
+        payload, parse_error = _read_json_body(environ, self.config_result.config.max_request_bytes)
+        if parse_error:
+            return _error_response(start_response, *parse_error, request_id)
 
         result = validate_invoice(payload)
-        if not result.valid:
-            fields = [
-                {"name": error.name, "code": error.code, "message": error.message}
-                for error in result.errors
-            ]
-            return _error_response(
-                start_response,
-                "400 Bad Request",
-                "validation_error",
-                "One or more fields are invalid.",
-                request_id,
-                fields=fields,
-            )
+        validation_error = _validation_response(start_response, result, request_id)
+        if validation_error:
+            return validation_error
 
         invoice = result.value
         return _json_response(
@@ -209,6 +178,46 @@ class Application:
             },
             request_id,
         )
+
+    def _generate(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
+        if not self.config_result.ready:
+            return _error_response(start_response, "503 Service Unavailable", "service_not_ready", "Service configuration is unavailable.", request_id)
+        payload, parse_error = _read_json_body(environ, self.config_result.config.max_request_bytes)
+        if parse_error:
+            return _error_response(start_response, *parse_error, request_id)
+        result = validate_invoice(payload)
+        validation_error = _validation_response(start_response, result, request_id)
+        if validation_error:
+            return validation_error
+
+        invoice = result.value
+        document_id = None
+        primary_error: ProviderError | None = None
+        pdf: bytes | None = None
+        try:
+            document_id = self.provider.copy_document(self.config_result.config.template_id, f"invoice-{invoice.service_start_date}")
+            replacements = {name: value for name, value in _invoice_payload(invoice).items() if value is not None}
+            replacements["total_amount"] = format_total(invoice)
+            self.provider.replace_values(document_id, replacements)
+            pdf = self.provider.export_pdf(document_id)
+            if not pdf or not pdf.startswith(b"%PDF"):
+                raise ProviderError("export_pdf", "invalid_pdf")
+        except ProviderError as error:
+            primary_error = error
+        finally:
+            if document_id is not None:
+                try:
+                    self.provider.delete_document(document_id)
+                except ProviderError as cleanup_error:
+                    if primary_error is None:
+                        primary_error = cleanup_error
+        if primary_error is not None:
+            status = "504 Gateway Timeout" if primary_error.retryable else "502 Bad Gateway"
+            code = "provider_timeout" if primary_error.retryable else "provider_error"
+            return _error_response(start_response, status, code, "The document provider could not complete the request.", request_id)
+        filename = f"invoice-{invoice.service_start_date}.pdf"
+        start_response("200 OK", [("Content-Type", "application/pdf"), ("Content-Length", str(len(pdf))), ("Content-Disposition", f'attachment; filename="{filename}"'), ("Cache-Control", "no-store"), ("X-Request-ID", request_id)])
+        return [pdf]
 
     def _template_fields(self, start_response: Callable, request_id: str) -> list[bytes]:
         if not self.config_result.ready:

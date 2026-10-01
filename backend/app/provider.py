@@ -11,6 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping, Protocol
 
+from .field_map import FIELD_MAP
+
 
 @dataclass(frozen=True, slots=True)
 class DocumentSnapshot:
@@ -69,8 +71,8 @@ class FixtureDocumentProvider:
         self._template = DocumentSnapshot(
             self._template_id,
             "fixture-invoice-template",
-            dict(fields or {"service_start_date": ("body:0",), "total_amount": ("table:0",)}),
-            {"service_start_date": "", "total_amount": ""},
+            dict(fields or {name: (definition.location,) for name, definition in FIELD_MAP.items()}),
+            {name: "" for name in FIELD_MAP},
         )
         self._copies: dict[str, DocumentSnapshot] = {}
         self._failures = dict(failures or {})
