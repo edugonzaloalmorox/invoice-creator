@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { appName, createInvoiceFormController, invoiceFields, requestPreview } from "../src/app.js";
+import { createFieldReviewController } from "../src/review.js";
 
 test("frontend scaffold is importable", () => {
   assert.equal(appName, "invoice-filler");
@@ -45,4 +46,28 @@ test("preview request sends only the form payload", async () => {
   assert.equal(JSON.parse(request.body).bank_name, "TEST-BANK");
   assert.equal(JSON.parse(request.body).total_amount, undefined);
   assert.equal(result.ok, true);
+});
+
+test("field review blocks unresolved required warnings and preserves edits through retry", async () => {
+  let attempts = 0;
+  const controller = createFieldReviewController({
+    loadFields: async () => {
+      attempts += 1;
+      if (attempts === 1) throw new Error("Temporary failure");
+      return { fields: [
+        { name: "service_start_date", label: "Start", type: "date", value: null, required: true, warnings: ["missing_field"], source: { section: "table", location: "table:0" } },
+        { name: "total_amount", label: "Total", type: "money", value: "10.00", required: true, calculated: true, warnings: [], source: { section: "table", location: "table:1" } },
+      ] };
+    },
+    preview: async () => ({ ok: true, calculation: { total_amount: "10.00" } }),
+  });
+  await controller.load();
+  assert.equal(controller.getState().status, "error");
+  controller.edit("service_start_date", "2026-09-01");
+  await controller.retry();
+  controller.edit("service_start_date", "2026-09-01");
+  assert.equal(controller.getState().unresolved, false);
+  const confirmed = await controller.confirm();
+  assert.equal(confirmed.canConfirm, true);
+  assert.equal(confirmed.fields[0].value, "2026-09-01");
 });
