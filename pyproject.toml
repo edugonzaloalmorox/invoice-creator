@@ -5,6 +5,8 @@ description = "Backend scaffold for the invoice filler MVP"
 requires-python = ">=3.12"
 dependencies = []
 
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
 [tool.pytest.ini_options]
 testpaths = ["backend/tests"]
-
