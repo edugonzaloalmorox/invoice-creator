@@ -236,6 +236,8 @@ class Application:
             pdf = self.provider.export_pdf(document_id)
             if not pdf or not pdf.startswith(b"%PDF"):
                 raise ProviderError("export_pdf", "invalid_pdf")
+            if len(pdf) > self.config_result.config.max_response_bytes:
+                raise ProviderError("export_pdf", "response_too_large")
         except ProviderError as error:
             primary_error = error
         finally:

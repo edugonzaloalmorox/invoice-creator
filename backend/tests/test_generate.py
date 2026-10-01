@@ -74,3 +74,19 @@ class GenerateEndpointTest(unittest.TestCase):
         self.assertEqual(status["status"], "502 Bad Gateway")
         self.assertEqual(json.loads(body)["error"]["code"], "provider_error")
 
+    def test_response_limit_rejects_large_pdf_before_return_and_cleans_up(self):
+        provider = FixtureDocumentProvider()
+        values = {
+            "INVOICE_ENVIRONMENT": "test",
+            "INVOICE_FRONTEND_ORIGIN": "http://localhost:3000",
+            "GOOGLE_CREDENTIALS_REFERENCE": "secret-manager://invoice/google",
+            CONFIG_TEMPLATE_ID: "fixture-template",
+            "INVOICE_MAX_REQUEST_BYTES": "1048576",
+            "INVOICE_MAX_RESPONSE_BYTES": "10",
+            "GOOGLE_PROVIDER_CONNECT_TIMEOUT_SECONDS": "3",
+            "GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS": "10",
+        }
+        status, body = call_raw(create_app(load_config(values).config, provider), invoice_body())
+        self.assertEqual(status["status"], "502 Bad Gateway")
+        self.assertEqual(json.loads(body)["error"]["code"], "provider_error")
+        self.assertEqual(provider.calls[-1][0], "delete_document")
