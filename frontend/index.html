@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Create and preview an invoice safely.">
+    <title>Invoice Filler</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="shell header-content">
+        <a class="brand" href="/" aria-label="Invoice Filler home"><span class="brand-mark" aria-hidden="true">IF</span><span>Invoice Filler</span></a>
+        <span class="environment-label">Local workspace</span>
+      </div>
+    </header>
+    <main class="shell page-content">
+      <section class="intro" aria-labelledby="page-title">
+        <p class="eyebrow">Invoice workspace</p>
+        <h1 id="page-title">Create an invoice</h1>
+        <p class="lede">Enter your service details, check the calculated total, and download a PDF when everything looks right.</p>
+      </section>
+      <div id="app" class="app-card"></div>
+      <p class="privacy-note"><span aria-hidden="true">⌁</span> Your details are sent only to the local invoice service for validation and PDF generation.</p>
+    </main>
+    <footer class="site-footer"><div class="shell">Invoice Filler · Local development</div></footer>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

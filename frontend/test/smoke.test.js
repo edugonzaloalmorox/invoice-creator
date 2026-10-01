@@ -37,8 +37,9 @@ test("pending preview prevents duplicate submissions and preserves values on err
 test("preview request sends only the form payload", async () => {
   let request;
   const result = await requestPreview({ currency: "EUR", bank_name: "TEST-BANK" }, {
-    fetchImpl: async (_url, options) => {
+    fetchImpl: async (url, options) => {
       request = options;
+      assert.equal(url, "http://localhost:8000/api/invoices/preview");
       return { ok: true, json: async () => ({ calculation: { total_amount: "1.00" } }) };
     },
   });

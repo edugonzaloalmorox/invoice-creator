@@ -15,6 +15,31 @@ uv run pytest
 cd frontend && npm test
 ```
 
+To run the browser frontend, configure and start the backend in one terminal:
+
+```sh
+export INVOICE_ENVIRONMENT=development
+export INVOICE_FRONTEND_ORIGIN=http://localhost:3000
+export GOOGLE_CREDENTIALS_REFERENCE=fixture://local
+export GOOGLE_TEMPLATE_ID=fixture-template
+export INVOICE_MAX_REQUEST_BYTES=1048576
+export INVOICE_MAX_RESPONSE_BYTES=5242880
+export GOOGLE_PROVIDER_CONNECT_TIMEOUT_SECONDS=3
+export GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS=10
+uv run python -m backend.run
+```
+
+Then start the frontend in a second terminal:
+
+```sh
+cd frontend
+npm start
+```
+
+Open [http://localhost:3000](http://localhost:3000). The frontend calls the
+backend at `http://localhost:8000`; use `localhost` consistently so it matches
+the configured CORS origin.
+
 The current smoke test can also be run with:
 
 ```sh

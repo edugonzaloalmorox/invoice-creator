@@ -1,5 +1,9 @@
 const BLOCKING_WARNINGS = new Set(["missing_field", "ambiguous_field", "low_confidence"]);
 
+function apiOrigin() {
+  return globalThis.INVOICE_API_ORIGIN || "http://localhost:8000";
+}
+
 export function createFieldReviewController({ loadFields, preview }) {
   const state = { status: "idle", fields: [], edits: {}, error: "", preview: null, download: null };
   const listeners = new Set();
@@ -80,7 +84,7 @@ export function createFieldReviewController({ loadFields, preview }) {
 }
 
 export async function requestGeneration(values, { fetchImpl = globalThis.fetch, urlImpl = globalThis.URL, documentImpl = globalThis.document } = {}) {
-  const response = await fetchImpl("/api/invoices/generate", {
+  const response = await fetchImpl(`${apiOrigin()}/api/invoices/generate`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
   });
   const contentType = (response.headers?.get?.("content-type") || "").split(";", 1)[0].toLowerCase();

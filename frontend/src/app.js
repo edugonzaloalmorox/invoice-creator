@@ -62,11 +62,15 @@ export function createInvoiceFormController({ preview } = {}) {
 }
 
 export async function requestPreview(values, { fetchImpl = globalThis.fetch } = {}) {
-  const response = await fetchImpl("/api/invoices/preview", {
+  const response = await fetchImpl(`${apiOrigin()}/api/invoices/preview`, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
   });
   const payload = await response.json();
   return response.ok ? { ok: true, ...payload } : { ok: false, error: payload.error };
+}
+
+export function apiOrigin() {
+  return globalThis.INVOICE_API_ORIGIN || "http://localhost:8000";
 }
 
 function escapeHtml(value) {
