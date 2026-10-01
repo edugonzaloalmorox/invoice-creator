@@ -1,6 +1,7 @@
 import unittest
 
 from backend.app.provider import FixtureDocumentProvider, ProviderError
+from backend.app.field_map import FIELD_MAP
 
 
 class FixtureProviderTest(unittest.TestCase):
@@ -46,3 +47,22 @@ class FixtureProviderTest(unittest.TestCase):
             provider.read_template("secret-document-id")
         self.assertNotIn("secret-document-id", str(context.exception))
 
+    def test_all_mapped_locations_replace_only_the_temporary_copy(self):
+        fields = {name: (definition.location,) for name, definition in FIELD_MAP.items()}
+        provider = FixtureDocumentProvider(fields=fields)
+        master_before = provider.read_template("fixture-template")
+        first = provider.copy_document("fixture-template", "temporary-a")
+        second = provider.copy_document("fixture-template", "temporary-b")
+        replacements = {name: f"TEST-{name}" for name in FIELD_MAP}
+        provider.replace_values(first, replacements)
+
+        self.assertNotEqual(first, second)
+        self.assertEqual(provider.copy_snapshot(first).values, replacements)
+        self.assertEqual(provider.copy_snapshot(second).values, master_before.values)
+        self.assertEqual(provider.read_template("fixture-template"), master_before)
+
+    def test_cleanup_failure_is_classified_for_orchestration(self):
+        provider = FixtureDocumentProvider(failures={"delete_document": "cleanup_failed"})
+        copy_id = provider.copy_document("fixture-template", "temporary")
+        with self.assertRaisesRegex(ProviderError, "cleanup_failed"):
+            provider.delete_document(copy_id)
