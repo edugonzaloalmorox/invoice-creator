@@ -1,15 +1,17 @@
 # Invoice Filler
 
-Initial project scaffold for the Invoice Filler MVP. The backend and frontend are
-kept intentionally empty until their task is reached; no Google integration or
-invoice behavior is included yet.
+Initial project scaffold for the Invoice Filler MVP. The backend currently includes
+configuration, health/readiness checks, and local invoice validation/calculation;
+Google integration and invoice HTTP endpoints remain out of scope for the completed
+tasks that have not reached implementation.
 
 ## Local development
 
-The project currently has no third-party dependencies:
+Install the locked development dependencies and run the backend tests with:
 
 ```sh
-uv run python -m unittest discover -s backend/tests
+uv sync
+uv run pytest
 cd frontend && npm test
 ```
 

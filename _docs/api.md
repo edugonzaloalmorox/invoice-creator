@@ -216,17 +216,21 @@ created, including failure paths.
 | --- | --- | --- | --- |
 | `service_start_date` | string | Yes | `YYYY-MM-DD` |
 | `service_end_date` | string | No | `YYYY-MM-DD`; define whether it may precede the start date |
-| `days_worked` | decimal string | Yes | Non-negative; supported precision and maximum must be documented |
-| `pay_per_day` | decimal string | Yes | Non-negative; supported precision and maximum must be documented |
-| `currency` | string | Yes | Uppercase supported ISO 4217 code |
-| `bank_name` | string | No | Maximum length; whitespace normalized |
-| `account_holder` | string | No | Maximum length; whitespace normalized |
-| `iban_or_account_number` | string | No | Maximum length; format rules depend on supported countries |
-| `swift_or_bic` | string | No | Maximum length; normalized consistently |
+| `days_worked` | decimal string | Yes | Non-negative, up to 366, with at most 2 decimal places |
+| `pay_per_day` | decimal string | Yes | Non-negative, up to 1,000,000.00, with at most 2 decimal places |
+| `currency` | string | Yes | Case-insensitive input; currently only `EUR` is supported and is normalized to uppercase |
+| `bank_name` | string | No | Optional individually; maximum 200 characters; whitespace normalized |
+| `account_holder` | string | No | Optional individually; maximum 200 characters; whitespace normalized |
+| `iban_or_account_number` | string | No | Optional individually; maximum 34 characters after spaces are removed; normalized to uppercase |
+| `swift_or_bic` | string | No | Optional individually; normalized to uppercase; must be 8 or 11 alphanumeric characters |
 
-The initial implementation should define whether bank fields are optional individually
-or required as a group. The API must apply that rule consistently in preview,
-generation, and template replacement.
+The initial implementation treats bank fields as optional individually. The API must
+apply that rule consistently in preview, generation, and template replacement.
+
+Dates are parsed as calendar dates and returned in `YYYY-MM-DD` form. An end date,
+when supplied, may not precede the start date. Totals use decimal arithmetic and are
+rounded to two decimal places using half-up rounding. Zero is accepted for workdays
+and pay; `days_worked` is independent of the date range.
 
 ## Standard error format
 
