@@ -1,4 +1,5 @@
 import json
+from io import BytesIO
 import os
 import unittest
 from unittest.mock import patch
@@ -30,15 +31,26 @@ def configured_values() -> dict[str, str]:
     }
 
 
-def call(app, path: str):
+def call(app, path: str, *, method: str = "GET", body: bytes = b"", content_type: str = ""):
     captured = {}
 
     def start_response(status, headers):
         captured["status"] = status
         captured["headers"] = dict(headers)
 
-    body = b"".join(app({"REQUEST_METHOD": "GET", "PATH_INFO": path}, start_response))
-    return captured, json.loads(body)
+    response_body = b"".join(
+        app(
+            {
+                "REQUEST_METHOD": method,
+                "PATH_INFO": path,
+                "CONTENT_TYPE": content_type,
+                "CONTENT_LENGTH": str(len(body)),
+                "wsgi.input": BytesIO(body),
+            },
+            start_response,
+        )
+    )
+    return captured, json.loads(response_body)
 
 
 class ConfigurationTest(unittest.TestCase):
