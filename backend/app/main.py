@@ -1,4 +1,4 @@
-"""Dependency-free liveness and readiness HTTP application."""
+"""Dependency-free WSGI application for the credential-free invoice workflow."""
 
 from __future__ import annotations
 

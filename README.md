@@ -1,9 +1,9 @@
 # Invoice Filler
 
 Initial project scaffold for the Invoice Filler MVP. The backend currently includes
-configuration, health/readiness checks, and local invoice validation/calculation;
-Google integration and invoice HTTP endpoints remain out of scope for the completed
-tasks that have not reached implementation.
+configuration, health/readiness checks, local invoice validation/calculation, and
+credential-free preview/generation endpoints backed by the fixture provider. Live
+Google integration remains pending issue #8.
 
 ## Local development
 
