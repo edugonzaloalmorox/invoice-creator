@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from io import BytesIO
 import secrets
+import time
 from typing import Callable
 
 from .config import AppConfig, ConfigLoad, load_config
@@ -110,10 +111,30 @@ class Application:
     def __init__(self, config_result: ConfigLoad, provider=None):
         self.config_result = config_result
         self.provider = provider or FixtureDocumentProvider()
+        self._generation_attempts: dict[str, list[float]] = {}
+        self._generation_limit = 10
+        self._generation_window_seconds = 60.0
 
     def __call__(self, environ: dict, start_response: Callable) -> list[bytes]:
         request_id = _request_id()
         path = environ.get("PATH_INFO", "")
+        request_origin = environ.get("HTTP_ORIGIN")
+        configured_origin = self.config_result.config.frontend_origin if self.config_result.config else None
+        if request_origin and configured_origin and request_origin != configured_origin:
+            return _error_response(start_response, "403 Forbidden", "origin_forbidden", "Request origin is not allowed.", request_id)
+        if request_origin and configured_origin == request_origin:
+            original_start_response = start_response
+
+            def cors_start_response(status, headers):
+                headers = list(headers) + [("Access-Control-Allow-Origin", request_origin), ("Vary", "Origin")]
+                original_start_response(status, headers)
+
+            start_response = cors_start_response
+        if environ.get("REQUEST_METHOD") == "OPTIONS" and request_origin:
+            if configured_origin != request_origin:
+                return _error_response(start_response, "403 Forbidden", "origin_forbidden", "Request origin is not allowed.", request_id)
+            start_response("204 No Content", [("Content-Length", "0"), ("Access-Control-Allow-Origin", request_origin), ("Access-Control-Allow-Methods", "GET, POST, OPTIONS"), ("Access-Control-Allow-Headers", "Content-Type"), ("Cache-Control", "no-store"), ("X-Request-ID", request_id)])
+            return [b""]
         if path == "/api/invoices/preview":
             if environ.get("REQUEST_METHOD") != "POST":
                 return _json_response(start_response, "405 Method Not Allowed", {"error": {"code": "method_not_allowed", "message": "Only POST is supported.", "request_id": request_id}}, request_id)
@@ -121,6 +142,8 @@ class Application:
         if path == "/api/invoices/generate":
             if environ.get("REQUEST_METHOD") != "POST":
                 return _json_response(start_response, "405 Method Not Allowed", {"error": {"code": "method_not_allowed", "message": "Only POST is supported.", "request_id": request_id}}, request_id)
+            if not self._allow_generation(environ):
+                return _error_response(start_response, "429 Too Many Requests", "rate_limited", "Generation limit exceeded. Try again later.", request_id)
             return self._generate(environ, start_response, request_id)
 
         if path == "/api/template/fields":
@@ -143,6 +166,17 @@ class Application:
                 request_id,
             )
         return _json_response(start_response, "404 Not Found", {"error": {"code": "not_found", "message": "Resource not found.", "request_id": request_id}}, request_id)
+
+    def _allow_generation(self, environ: dict) -> bool:
+        now = time.monotonic()
+        client = environ.get("REMOTE_ADDR", "unknown")
+        attempts = [stamp for stamp in self._generation_attempts.get(client, []) if now - stamp < self._generation_window_seconds]
+        if len(attempts) >= self._generation_limit:
+            self._generation_attempts[client] = attempts
+            return False
+        attempts.append(now)
+        self._generation_attempts[client] = attempts
+        return True
 
     def _preview(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
         if not self.config_result.ready:

@@ -286,8 +286,11 @@ copy.
 - Google credentials and the configured template ID remain backend-only configuration.
 - Restrict CORS to the deployed frontend origin.
 - Use HTTPS in production.
+- Production configuration rejects an HTTP frontend origin.
 - Do not log request bodies, bank fields, PDF bytes, or credentials.
 - Apply request and response size limits.
+- Generation is limited to ten attempts per client address per minute and returns
+  `429 rate_limited` after the limit.
 - Use `Cache-Control: no-store` for generated PDFs and sensitive JSON responses where appropriate.
 - Return request IDs for support without deriving them from user or bank data.
 

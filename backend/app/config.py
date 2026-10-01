@@ -124,6 +124,8 @@ def load_config(values: dict[str, str] | None = None) -> ConfigLoad:
             or port == 0
         ):
             errors.append(f"{CONFIG_FRONTEND_ORIGIN} must be an HTTP(S) origin")
+        elif environment.lower() == "production" and parsed.scheme != "https":
+            errors.append(f"{CONFIG_FRONTEND_ORIGIN} must use HTTPS in production")
 
     max_request = _positive_integer(source, CONFIG_MAX_REQUEST_BYTES, errors, maximum=10_485_760)
     max_response = _positive_integer(source, CONFIG_MAX_RESPONSE_BYTES, errors, maximum=52_428_800)

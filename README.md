@@ -41,5 +41,7 @@ export GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS=10
 
 `INVOICE_ENVIRONMENT` and the origin are non-secret metadata. Request and response
 limits are positive byte counts (up to 10 MiB and 50 MiB respectively), and provider
-timeouts are positive seconds (up to five minutes). The health and readiness API
-contracts are documented in [`_docs/api.md`](_docs/api.md).
+timeouts are positive seconds (up to five minutes). Production requires an HTTPS
+frontend origin. CORS accepts only the configured origin, and generation is limited
+to ten attempts per client address per minute. The health and readiness API contracts
+are documented in [`_docs/api.md`](_docs/api.md).
