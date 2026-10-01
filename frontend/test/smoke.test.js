@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { appName, createInvoiceFormController, invoiceFields, requestPreview } from "../src/app.js";
-import { createFieldReviewController } from "../src/review.js";
+import { createFieldReviewController, requestGeneration } from "../src/review.js";
 
 test("frontend scaffold is importable", () => {
   assert.equal(appName, "invoice-filler");
@@ -70,4 +70,46 @@ test("field review blocks unresolved required warnings and preserves edits throu
   const confirmed = await controller.confirm();
   assert.equal(confirmed.canConfirm, true);
   assert.equal(confirmed.fields[0].value, "2026-09-01");
+});
+
+test("generation preserves review state on failure and prevents duplicate requests", async () => {
+  let resolveGeneration;
+  let calls = 0;
+  const controller = createFieldReviewController({
+    loadFields: async () => ({ fields: [{ name: "service_start_date", label: "Start", type: "date", value: "2026-09-01", required: true, warnings: [], source: {} }] }),
+    preview: async () => ({ ok: true }),
+  });
+  await controller.load();
+  await controller.confirm();
+  const first = controller.generate(() => { calls += 1; return new Promise((resolve) => { resolveGeneration = resolve; }); });
+  const second = controller.generate(() => { calls += 1; return Promise.resolve({ filename: "invoice.pdf" }); });
+  assert.equal(calls, 1);
+  assert.equal(controller.getState().status, "generating");
+  resolveGeneration({ filename: "invoice.pdf" });
+  await first;
+  await second;
+  assert.equal(controller.getState().fields[0].value, "2026-09-01");
+  assert.equal(controller.getState().download.filename, "invoice.pdf");
+});
+
+test("generation downloads only a successful PDF with the safe server filename", async () => {
+  let clicked = false;
+  const response = {
+    ok: true,
+    headers: { get: (name) => name === "content-type" ? "application/pdf" : 'attachment; filename="invoice-2026-09-01.pdf"' },
+    blob: async () => new Blob(["pdf"]),
+  };
+  const result = await requestGeneration({ bank_name: "TEST-BANK" }, {
+    fetchImpl: async () => response,
+    urlImpl: { createObjectURL: () => "blob:fixture", revokeObjectURL: () => {} },
+    documentImpl: { createElement: () => ({ set href(_) {}, set download(_) { clicked = true; }, click() {} }) },
+  });
+  assert.equal(result.filename, "invoice-2026-09-01.pdf");
+  assert.equal(clicked, true);
+});
+
+test("non-PDF success responses fail without downloading", async () => {
+  await assert.rejects(() => requestGeneration({}, {
+    fetchImpl: async () => ({ ok: true, headers: { get: () => "application/json" } }),
+  }), /invalid PDF response/);
 });
