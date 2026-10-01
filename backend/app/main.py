@@ -8,7 +8,9 @@ import secrets
 from typing import Callable
 
 from .config import AppConfig, ConfigLoad, load_config
+from .detection import detect_fields
 from .invoice import InvoiceInput, format_total, validate_invoice
+from .provider import FixtureDocumentProvider, ProviderError
 
 
 def project_name() -> str:
@@ -74,8 +76,9 @@ def _invoice_payload(invoice: InvoiceInput) -> dict:
 class Application:
     """Small WSGI application with configuration captured at startup."""
 
-    def __init__(self, config_result: ConfigLoad):
+    def __init__(self, config_result: ConfigLoad, provider=None):
         self.config_result = config_result
+        self.provider = provider or FixtureDocumentProvider()
 
     def __call__(self, environ: dict, start_response: Callable) -> list[bytes]:
         request_id = _request_id()
@@ -84,6 +87,11 @@ class Application:
             if environ.get("REQUEST_METHOD") != "POST":
                 return _json_response(start_response, "405 Method Not Allowed", {"error": {"code": "method_not_allowed", "message": "Only POST is supported.", "request_id": request_id}}, request_id)
             return self._preview(environ, start_response, request_id)
+
+        if path == "/api/template/fields":
+            if environ.get("REQUEST_METHOD") != "GET":
+                return _json_response(start_response, "405 Method Not Allowed", {"error": {"code": "method_not_allowed", "message": "Only GET is supported.", "request_id": request_id}}, request_id)
+            return self._template_fields(start_response, request_id)
 
         if environ.get("REQUEST_METHOD") != "GET":
             return _json_response(start_response, "405 Method Not Allowed", {"error": {"code": "method_not_allowed", "message": "Only GET is supported.", "request_id": request_id}}, request_id)
@@ -202,15 +210,24 @@ class Application:
             request_id,
         )
 
+    def _template_fields(self, start_response: Callable, request_id: str) -> list[bytes]:
+        if not self.config_result.ready:
+            return _error_response(start_response, "503 Service Unavailable", "service_not_ready", "Service configuration is unavailable.", request_id)
+        try:
+            payload = detect_fields(self.provider, self.config_result.config.template_id)
+        except ProviderError:
+            return _error_response(start_response, "502 Bad Gateway", "provider_error", "The document provider returned an unusable response.", request_id)
+        return _json_response(start_response, "200 OK", payload, request_id)
 
-def create_app(config: AppConfig | None = None) -> Application:
+
+def create_app(config: AppConfig | None = None, provider=None) -> Application:
     """Create the app; invalid config is retained for the readiness endpoint."""
 
     if config is not None:
         result = ConfigLoad(config, ())
     else:
         result = load_config()
-    return Application(result)
+    return Application(result, provider)
 
 
 app = create_app()

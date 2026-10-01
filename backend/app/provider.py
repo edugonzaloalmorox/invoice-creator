@@ -20,6 +20,7 @@ class DocumentSnapshot:
     title: str
     fields: Mapping[str, tuple[str, ...]]
     values: Mapping[str, str]
+    version: str = "2026-01"
 
 
 class ProviderError(RuntimeError):
@@ -97,7 +98,7 @@ class FixtureDocumentProvider:
         self._copy_number += 1
         document_id = f"fixture-copy-{self._copy_number}"
         self._copies[document_id] = DocumentSnapshot(
-            document_id, title, dict(self._template.fields), dict(self._template.values)
+            document_id, title, dict(self._template.fields), dict(self._template.values), self._template.version
         )
         return document_id
 
