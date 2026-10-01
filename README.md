@@ -45,3 +45,6 @@ timeouts are positive seconds (up to five minutes). Production requires an HTTPS
 frontend origin. CORS accepts only the configured origin, and generation is limited
 to ten attempts per client address per minute. The health and readiness API contracts
 are documented in [`_docs/api.md`](_docs/api.md).
+
+Deployment topology, the development start command, configuration ownership, and
+incident procedures are documented in [`_docs/operations.md`](_docs/operations.md).
