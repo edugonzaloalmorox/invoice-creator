@@ -17,6 +17,7 @@ Lifecycle
 5. On FAIL, back to step 3 with the QA comment as input
 6. On PASS, close the issue
 7. Repeat until the backlog is empty
+8. Before closing an issue on git it must be checked
 
 Rules
 
