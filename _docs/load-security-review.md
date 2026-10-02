@@ -11,6 +11,7 @@ real invoice/bank data.
 | Preview baseline | 20 sequential valid requests | 100% `200`, no provider calls | `ROLE_SERVICE_OWNER` | PASS in automated suite |
 | Preview malformed input | 20 invalid requests | 100% safe `400`, no sensitive echo | `ROLE_SERVICE_OWNER` | PASS in automated suite |
 | Generation concurrency proxy | 11 requests from one client | Requests after 10 return `429`; no uncontrolled copy | `ROLE_SERVICE_OWNER` | PASS in automated suite |
+| Repeated provider timeout | 10 generation requests | 100% `504`; every temporary copy cleaned up | `ROLE_SERVICE_OWNER` | PASS in automated suite |
 | Oversized body | Body above configured limit | `413` before provider work | `ROLE_SERVICE_OWNER` | PASS in automated suite |
 | Provider timeout | Fixture export timeout | `504`, cleanup attempted | `ROLE_SERVICE_OWNER` | PASS in automated suite |
 | CORS/error leakage | Allowed and denied origins plus malformed data | Exact origin only; no bank/credential/PDF leakage | `ROLE_SECURITY_ESCALATION` | PASS in automated suite |
@@ -18,7 +19,9 @@ real invoice/bank data.
 Production-like acceptance requires recording concurrency, duration, request limit,
 provider latency, CPU/memory, error rate, and cleanup count for the approved
 environment. The current automated checks are bounded functional safeguards, not a
-claim of production capacity.
+claim of production capacity. They exercise 20 valid previews, 20 malformed
+previews, 10 timeout generations, and an 11-request rate-limit boundary in the
+fixture provider.
 
 ## Security findings
 
