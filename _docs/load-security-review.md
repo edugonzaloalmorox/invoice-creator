@@ -24,6 +24,19 @@ claim of production capacity. They exercise 20 sequential and 20 concurrent vali
 previews, 10 timeout generations, and an 11-request rate-limit boundary in the
 fixture provider.
 
+For an approved disposable HTTP environment, run the dependency-free synthetic
+runner and retain only its aggregate JSON output:
+
+```sh
+python3 scripts/load_test.py --base-url https://disposable.example.test --endpoint preview --requests 20 --concurrency 4
+python3 scripts/load_test.py --base-url https://disposable.example.test --endpoint generate --requests 10 --concurrency 2
+```
+
+The runner uses synthetic invoice values, reports status counts and min/max/average
+latency, and never prints response bodies or provider payloads. Platform CPU/memory,
+cleanup counts, and penetration results must still be captured by the approved
+environment owner.
+
 ## Security findings
 
 No unresolved findings in the credential-free review. Live Google access control,
