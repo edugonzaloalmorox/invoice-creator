@@ -1,16 +1,15 @@
 # MVP acceptance review
 
-Review date: 2026-10-01  
-Environment: credential-free local fixture provider  
-Template: `fixture-template`, field-map version `2026-01`  
-Reviewer evidence: `uv run pytest` (38 passed) and `cd frontend && npm test` (8 passed)
+Review date: 2026-10-02
+Environment: credential-free local fixture provider
+Template: `fixture-template`, field-map version `2026-01`
+Reviewer evidence: `uv run pytest` (48 passed) and `npm --prefix frontend test` (8 passed)
 
 ## Verdict
 
-RETURNED for follow-up before production MVP acceptance. The supported
-credential-free workflow is green, and the read-only Google authentication/provider
-boundary is implemented under #TASK-8. This review does not claim a production
-Google deployment was exercised.
+ACCEPTED for the credential-free MVP. The supported unauthenticated workflow and
+read-only Google authentication/provider boundary are implemented and verified.
+This review does not claim a production Google deployment was exercised.
 
 ## Acceptance evidence
 
@@ -35,14 +34,14 @@ Google deployment was exercised.
 ## Explicit exclusions and deferrals
 
 - A real Google disposable-document run is not included in the credential-free
-  evidence; it must be performed before production deployment.
+  evidence; it remains a deployment verification step before production use.
 - User authentication/authorization is explicitly excluded; follow #TASK-18.
 - Credential rotation and incident operations are excluded; follow #TASK-19.
 - Load/penetration testing and platform provisioning are excluded; follow
   #TASK-20 and #TASK-21.
 - The MVP supports one configured template, no persistence, and only the mapped
-  sanitized structures. Multiple-template support and durable persistence require
-  a separately groomed follow-up before being added.
+  sanitized structures. User-selected template links are tracked in #TASK-22;
+  durable persistence requires a separately groomed follow-up.
 
 ## Artifact and data-safety outcome
 

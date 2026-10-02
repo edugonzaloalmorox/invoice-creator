@@ -415,12 +415,12 @@ When done, the supported unauthenticated MVP flow has been exercised end to end,
 
 ## Acceptance criteria
 
-- [ ] Reviewer loads detected fields, corrects values, previews total, confirms fields, generates PDF, and downloads it successfully.
-- [ ] Reviewer simulates generation failure, verifies a clear error, retries without losing values, and confirms no master-template mutation.
-- [ ] Review records template version, environment, date, commands/results, and artifact outcome without sensitive data.
-- [ ] Every deviation/deferred feature links to an existing follow-up (#TASK-18 through #TASK-21 or a newly numbered issue).
-- [ ] Explicit exclusions—authentication, multiple templates, persistence, unsupported structures—are verified as excluded.
-- [ ] MVP is accepted only when prior criteria and security/privacy checks pass; otherwise owning issue is reopened or linked.
+- [x] Reviewer loads detected fields, corrects values, previews total, confirms fields, generates PDF, and downloads it successfully.
+- [x] Reviewer simulates generation failure, verifies a clear error, retries without losing values, and confirms no master-template mutation.
+- [x] Review records template version, environment, date, commands/results, and artifact outcome without sensitive data.
+- [x] Every deviation/deferred feature links to an existing follow-up (#TASK-18 through #TASK-21 or a newly numbered issue).
+- [x] Explicit exclusions—authentication, multiple templates, persistence, unsupported structures—are verified as excluded.
+- [x] MVP is accepted only when prior criteria and security/privacy checks pass; otherwise owning issue is reopened or linked.
 
 ## Out of scope
 
