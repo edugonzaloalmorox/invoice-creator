@@ -1,21 +1,48 @@
 # Invoice Filler
 
-Initial project scaffold for the Invoice Filler MVP. The backend currently includes
-configuration, health/readiness checks, local invoice validation/calculation, and
-credential-free preview/generation endpoints backed by the fixture provider. Live
-Google integration remains pending issue #8.
+Invoice Filler is a small browser application for filling invoices automatically. It reviews invoice fields,
+calculates a total and download a generated PDF with the final invoice. The current MVP is
+credential-free and uses a deterministic in-memory fixture provider, so it can
+be developed and tested without Google credentials or a real document.
 
-## Local development
+Live Google authentication/provider integration is still pending (#TASK-8).
+The application currently supports one configured template, does not persist
+invoice data, and is not a production deployment.
 
-Install the locked development dependencies and run the backend tests with:
+## Quick start
+
+Requirements:
+
+- Python 3.12+
+- [`uv`](https://docs.astral.sh/uv/)
+- Node.js (for the frontend test command)
+
+Install dependencies and run the test suites:
 
 ```sh
 uv sync
 uv run pytest
-cd frontend && npm test
+(cd frontend && npm test)
 ```
 
-To run the browser frontend, configure and start the backend in one terminal:
+Start both local servers with the development defaults:
+
+```sh
+make run
+```
+
+Then open [http://localhost:3000](http://localhost:3000). `make run` starts the
+backend on `http://localhost:8000` and serves the static frontend on port 3000.
+It stops existing processes listening on those two development ports first.
+
+To start the services separately:
+
+```sh
+make backend
+make frontend
+```
+
+The backend can also be started directly after exporting the required settings:
 
 ```sh
 export INVOICE_ENVIRONMENT=development
@@ -29,47 +56,81 @@ export GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS=10
 uv run python -m backend.run
 ```
 
-Then start the frontend in a second terminal:
+## Local workflow
 
-```sh
-cd frontend
-npm start
+1. Enter invoice details in the browser.
+2. Preview the invoice. The backend validates and normalizes the input and
+   calculates `days_worked * pay_per_day` using decimal arithmetic.
+3. Review detected template fields and resolve any required warnings.
+4. Generate the PDF. The backend validates and recalculates the values before
+   exporting the fixture PDF; the browser downloads the resulting file.
+
+The backend is authoritative for validation, calculations, template selection,
+and generated output. The client cannot provide the total or choose an
+arbitrary template.
+
+## API overview
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/health` | Lightweight liveness check; does not require configuration |
+| `GET /api/ready` | Reports whether startup configuration is valid |
+| `GET /api/template/fields` | Loads mapped fields for review |
+| `POST /api/invoices/preview` | Validates input and calculates the total without creating a document |
+| `POST /api/invoices/generate` | Creates a temporary fixture copy, replaces values, and returns a PDF |
+
+See the [API contract](_docs/api.md) for request/response schemas, validation
+rules, error formats, and security requirements.
+
+## Configuration
+
+All variables are read and validated at startup. In local development, the
+defaults in [`Makefile`](Makefile) configure the fixture provider.
+
+| Variable | Meaning |
+| --- | --- |
+| `INVOICE_ENVIRONMENT` | Environment label, such as `development` or `production` |
+| `INVOICE_FRONTEND_ORIGIN` | The single allowed browser origin |
+| `GOOGLE_CREDENTIALS_REFERENCE` | Reference to externally managed credentials; never credential contents |
+| `GOOGLE_TEMPLATE_ID` | The configured template identifier (`fixture-template` locally) |
+| `INVOICE_MAX_REQUEST_BYTES` | Positive request-body limit, up to 10 MiB |
+| `INVOICE_MAX_RESPONSE_BYTES` | Positive response limit, up to 50 MiB |
+| `GOOGLE_PROVIDER_CONNECT_TIMEOUT_SECONDS` | Provider connection timeout, up to 300 seconds |
+| `GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS` | Provider read timeout, up to 300 seconds |
+
+Production requires an HTTPS frontend origin. Readiness returns `503` when a
+required value is missing or invalid. Do not put credentials, real template IDs,
+invoice data, bank details, or PDF contents in source control or logs.
+
+## Repository layout
+
+```text
+backend/       Dependency-free WSGI backend, domain logic, provider boundary, and tests
+frontend/      Static browser client and Node-based frontend tests
+_docs/         API contract, operations runbook, product plan, testing guidance, and reviews
+Makefile       Local development commands and fixture configuration defaults
 ```
 
-Open [http://localhost:3000](http://localhost:3000). The frontend calls the
-backend at `http://localhost:8000`; use `localhost` consistently so it matches
-the configured CORS origin.
+Useful documentation:
 
-The current smoke test can also be run with:
+- [API contract](_docs/api.md)
+- [Operations runbook](_docs/operations.md)
+- [Testing guidelines](_docs/testing-guidelines.md)
+- [MVP acceptance review](_docs/acceptance-review.md)
+- [Product plan](_docs/invoice-filler-plan.md)
 
-```sh
-uv run python -m unittest discover -s backend/tests -t .
-```
+## Current scope and follow-up work
 
-## Runtime configuration
+The repository has automated coverage for validation/calculation, field
+detection, preview and generation, frontend behavior, provider failure paths,
+cleanup, CORS, request limits, rate limiting, and sensitive-data handling.
 
-The process can start without configuration so that liveness remains observable,
-but `/api/ready` returns `503` until all of these variables are valid. Values are
-read once when the application starts; credential references identify a secret
-manager location and must not contain credential material.
+The following are intentionally outside the current credential-free MVP:
 
-```sh
-export INVOICE_ENVIRONMENT=development
-export INVOICE_FRONTEND_ORIGIN=http://localhost:3000
-export GOOGLE_CREDENTIALS_REFERENCE=secret-manager://invoice/google
-export GOOGLE_TEMPLATE_ID=template-id-placeholder
-export INVOICE_MAX_REQUEST_BYTES=1048576
-export INVOICE_MAX_RESPONSE_BYTES=5242880
-export GOOGLE_PROVIDER_CONNECT_TIMEOUT_SECONDS=3
-export GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS=10
-```
+- Live Google authentication and document-provider integration (#TASK-8)
+- User authentication and authorization (#TASK-18)
+- Credential rotation and incident operations (#TASK-19)
+- Load/penetration testing and platform provisioning (#TASK-20 and #TASK-21)
 
-`INVOICE_ENVIRONMENT` and the origin are non-secret metadata. Request and response
-limits are positive byte counts (up to 10 MiB and 50 MiB respectively), and provider
-timeouts are positive seconds (up to five minutes). Production requires an HTTPS
-frontend origin. CORS accepts only the configured origin, and generation is limited
-to ten attempts per client address per minute. The health and readiness API contracts
-are documented in [`_docs/api.md`](_docs/api.md).
-
-Deployment topology, the development start command, configuration ownership, and
-incident procedures are documented in [`_docs/operations.md`](_docs/operations.md).
+See the [acceptance review](_docs/acceptance-review.md) for the current status
+and evidence.
