@@ -467,10 +467,10 @@ When done, operators can rotate Google credentials, revoke compromised access, a
 
 ## Acceptance criteria
 
-- [ ] Credential issuance, storage, rotation, revocation, and emergency disablement steps are documented.
-- [ ] Incident steps identify containment, evidence preservation, notification/escalation, and recovery owners.
-- [ ] Rotation can occur without committing secrets or exposing invoice/bank data in logs.
-- [ ] A tabletop or automated check records that the procedures are executable.
+- [x] Credential issuance, storage, rotation, revocation, and emergency disablement steps are documented.
+- [x] Incident steps identify containment, evidence preservation, notification/escalation, and recovery owners.
+- [x] Rotation can occur without committing secrets or exposing invoice/bank data in logs.
+- [x] A tabletop or automated check records that the procedures are executable.
 
 ## Out of scope
 
