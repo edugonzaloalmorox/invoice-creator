@@ -1,6 +1,10 @@
 .PHONY: run backend frontend kill-ports
 
-# Local development defaults. Existing environment values take precedence.
+# Load optional local configuration. Keep real credentials in .env; it is ignored
+# by Git. Explicit command-line assignments still take precedence.
+-include .env
+
+# Local development defaults.
 export INVOICE_ENVIRONMENT ?= development
 export INVOICE_FRONTEND_ORIGIN ?= http://127.0.0.1:3000
 export GOOGLE_CREDENTIALS_REFERENCE ?= fixture://local

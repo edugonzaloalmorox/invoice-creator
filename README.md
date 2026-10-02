@@ -31,6 +31,11 @@ Start both local servers with the development defaults:
 make run
 ```
 
+To use a real Google template locally, copy [`.env.example`](.env.example) to
+`.env`, set `GOOGLE_CREDENTIALS_REFERENCE` to the absolute path of the
+service-account JSON file, and then run `make run`. `.env` is ignored by Git;
+never commit the JSON file or its contents.
+
 Then open [http://127.0.0.1:3000](http://127.0.0.1:3000). `make run` starts the
 backend on `http://localhost:8000` and serves the static frontend on port 3000.
 It stops existing processes listening on those two development ports first.

@@ -441,23 +441,46 @@ The following issues are intentionally outside the MVP but are real, linked back
 
 ## Goal
 
-When done, invoice data and generation are available only to authorized users under a documented account and access model.
+When done, users can sign in with Google through an OAuth 2.0 authorization-code
+flow, and every invoice/template operation is authorized against the signed-in
+user rather than a shared service account.
 
 ## Acceptance criteria
 
-- [ ] The supported identity provider, session lifecycle, authorization rule, and unauthenticated behavior are documented.
-- [ ] Unauthorized users cannot read template fields, generate PDFs, or access another user’s artifacts.
-- [ ] Session expiry, logout, revoked access, and provider outage have visible safe behavior.
-- [ ] Tests cover authorization boundaries without real personal or bank data.
+- [ ] Google OAuth 2.0 web-server authorization-code flow is documented and
+  implemented with a registered redirect URI, validated `state`, and backend
+  code exchange; access tokens and refresh tokens never pass through browser
+  storage or URLs.
+- [ ] A successful callback creates or resumes a local user identity and a
+  server-managed session; the session cookie has documented expiry, secure,
+  HttpOnly, SameSite, logout, and rotation behavior.
+- [ ] Unauthenticated users can only access the documented sign-in/start routes;
+  template reading, preview, generation, and artifact access require a valid
+  session belonging to the requesting user.
+- [ ] Session expiry, logout, revoked Google consent, denied consent, invalid
+  OAuth state, and Google/provider outage have visible safe behavior and do not
+  disclose tokens or provider payloads.
+- [ ] Authorization checks prevent one user from reading another user’s template
+  selection, invoice data, temporary document, or generated artifact.
+- [ ] Tests cover callback/state/session and authorization boundaries using fake
+  identities and tokens, without real personal, bank, or Google data.
 
 ## Out of scope
 
-- MVP unauthenticated flow, covered by #TASK-1 through #TASK-17.
+- Encrypted refresh-token/session persistence, moved to #TASK-24.
+- Google Cloud OAuth client, consent-screen, redirect-URI, and Picker setup,
+  moved to #TASK-25.
+- Template selection and Google Drive/Docs provider handoff, covered by #TASK-22.
 - Organization roles and billing, moved to a future numbered issue.
 
 ## Constraints
 
-- Do not add authentication to the MVP acceptance flow; use least-privilege storage and redact identity/bank data.
+- Use Google OAuth 2.0 authorization-code flow with offline access for backend
+  provider calls; do not implement an implicit flow or put tokens in the frontend.
+- Keep identity, session, token, invoice, and bank data redacted from logs,
+  request IDs, URLs, analytics, and error responses.
+- Follow `_docs/api.md`, `_docs/operations.md`, and
+  `_docs/testing-guidelines.md`; do not add dependencies without approval.
 
 ## 19. Add credential rotation and incident response operations
 
@@ -529,53 +552,189 @@ When done, the deployed service has owned platform resources, actionable monitor
 
 ## Goal
 
-When done, a user can paste a Google Docs template link into the app, authenticate
-access through the backend, and use the successfully read template in the existing
-invoice review and fill flow.
+When done, a signed-in user can authorize access to their Google Drive/Docs and
+connect a selected invoice template to the existing review and fill flow. The
+backend uses that user’s OAuth credentials for all Google operations and never a
+shared service-account identity.
 
 ## Acceptance criteria
 
-- [x] The initial template screen shows a clearly labeled input with text such as
-  “Where is your template?” and a primary action to load the template.
-- [x] The input accepts a Google Docs document URL, preserves the user’s value on
-  validation or network failure, and does not place the URL in the browser URL,
-  analytics payload, logs, or request IDs.
-- [x] Submitting the link shows an accessible loading state and prevents duplicate
-  submissions until the request completes.
-- [x] The frontend sends the link over the existing authenticated backend channel;
-  the backend extracts and validates the Google document ID and uses the configured
-  service-account credentials to verify access without exposing credentials.
-- [x] Links from unsupported hosts, malformed URLs, trashed documents, non-Google
-  files, inaccessible documents, and provider failures return safe, actionable
-  errors without leaking document contents or provider payloads.
-- [x] A successful response contains only the sanitized template identity, field-map
-  version, and reviewable field metadata needed by the existing review UI; raw
-  document content and credentials are never returned.
-- [x] After successful loading, the selected template is used by preview and
-  generation, and the user can fill the mapped fields and download the resulting
-  PDF through the existing flow.
-- [x] Retry and back-navigation preserve the entered link and any user-edited invoice
-  values without creating duplicate provider work.
-- [x] Tests cover valid links, invalid links, access denial, provider failure,
-  duplicate submission, sensitive-value redaction, and successful handoff to the
-  existing fill/generation flow using a disposable or mocked document.
+- [ ] The initial template screen clearly shows the signed-in Google account,
+  authorization state, and an accessible action to connect or re-authorize Drive.
+- [ ] The user can select a Google Docs template through the authorized Drive/Docs
+  flow; if a URL is retained, it is accepted only after the backend verifies that
+  the authenticated user can access that exact Google Docs file.
+- [ ] Loading shows an accessible pending state, prevents duplicate submissions,
+  and preserves the selected link/selection across validation or network failure.
+- [ ] The backend obtains the current user’s OAuth credentials from the server-side
+  session/token store, extracts and validates the document ID, and never accepts
+  client-supplied identity, access tokens, or refresh tokens.
+- [ ] Unsupported links, malformed URLs, denied access, revoked consent, expired
+  sessions, trashed/non-Docs files, and provider failures return safe actionable
+  errors without leaking document contents, tokens, or provider payloads.
+- [ ] A successful response contains only the per-user opaque selection token,
+  sanitized template identity, field-map version, and reviewable field metadata;
+  raw document content and OAuth credentials are never returned.
+- [ ] Preview, replacement, export, cleanup, and generated-artifact access use the
+  same authorized user/template boundary, and one user cannot use another user’s
+  selection token.
+- [ ] Retry and back-navigation preserve the user’s selection and invoice edits
+  without creating duplicate provider work.
+- [ ] Tests cover OAuth-authenticated success, access denial, revoked/expired
+  authorization, invalid selection ownership, provider failure, duplicate
+  submission, sensitive-value redaction, and successful handoff using mocked or
+  disposable Google resources.
 
 ## Out of scope
 
-- User accounts, OAuth consent screens, session management, or per-user authorization,
+- User identity, OAuth callback, session lifecycle, and authorization middleware,
   covered by #TASK-18.
-- Arbitrary web URLs, Google Drive folder browsing, multiple-template persistence,
-  and template administration; these require a separately groomed follow-up.
+- Encrypted token/session persistence and key management, covered by #TASK-24.
+- Google OAuth client, consent-screen, redirect-URI, and Picker configuration,
+  covered by #TASK-25.
+- Arbitrary web URLs, folder browsing, multiple-template administration, and
+  cross-organization sharing; these require a separately groomed follow-up.
 - Changes to Google document copying, replacement, export, or cleanup semantics,
   covered by #TASK-11 and #TASK-12.
 
 ## Constraints
 
-- Keep credentials and Google API calls in the backend; the browser must never
-  receive service-account material or raw document content.
+- Keep OAuth code exchange, token refresh, and Google API calls in the backend; the
+  browser must never receive service-account material, refresh tokens, access
+  tokens, or raw document content.
+- Use the authenticated user’s Google credentials and least-privilege Drive/Docs
+  scopes. Prefer a Picker/file-selection flow with `drive.file`; document and
+  approve any broader scope required by pasted-link or copy/export behavior.
 - Reuse the existing Google provider, field map, review state, and generation API;
   do not duplicate template parsing or invoice calculation in the frontend.
 - Use the existing frontend styles and accessibility patterns; no
   `_docs/design-system.md` is currently present, so document any new visual
   decisions in the task implementation.
 - Use sanitized/disposable fixtures and follow `_docs/testing-guidelines.md`.
+
+## 23. Review and repair Google authentication for template connection
+
+## Goal
+
+When done, `POST /api/template/connect` uses the signed-in user’s OAuth 2.0
+credentials to read an authorized Google Docs template in the target environment,
+or it returns a correctly classified, actionable failure. The original failure to
+investigate was a `502 Bad Gateway` for this request:
+`127.0.0.1 - - [02/Oct/2026 08:37:00] "POST /api/template/connect HTTP/1.1" 502 138`.
+
+## Acceptance criteria
+
+- [ ] The original failure is reproduced with a sanitized/disposable Google Docs
+  template and a signed-in test identity; evidence records whether it is caused by
+  OAuth callback/state, token refresh/revocation, user permission, template
+  access/type, or provider availability.
+- [ ] OAuth authorization and refresh use the documented client configuration and
+  scopes; client secrets, access tokens, refresh tokens, document IDs, and user
+  identity details are absent from logs, URLs, request IDs, and public errors.
+- [ ] Permission-denied, revoked/expired authorization, template-not-found/non-Doc,
+  provider-unavailable, and timeout cases map to documented safe status/code
+  behavior without raw provider payloads.
+- [ ] A successful connection reads the template without mutating the master, and
+  preview, generation, and cleanup continue through the authenticated user boundary.
+- [ ] Automated tests cover the diagnosed failure and successful OAuth-authenticated
+  path with mocked tokens or an approved disposable environment; the default suite
+  remains runnable without network access or real credentials.
+- [ ] The runbook records OAuth consent, redirect, token-revocation, reauthorization,
+  and safe recovery checks without real identifiers or secrets.
+
+## Out of scope
+
+- Initial user identity, OAuth callback, session lifecycle, and authorization,
+  covered by #TASK-18.
+- Encrypted OAuth token/session persistence and key management, covered by #TASK-24.
+- OAuth client and consent-screen setup, covered by #TASK-25.
+- Credential rotation or compromise response, covered by #TASK-19.
+- Production platform provisioning or long-term monitoring, covered by #TASK-21.
+- Changes to template parsing, field detection, replacement, export, or cleanup,
+  covered by #TASK-7, #TASK-9, #TASK-11, and #TASK-12.
+
+## Constraints
+
+- Keep OAuth code exchange, token refresh, and provider calls in the backend; never
+  expose client secrets, access/refresh tokens, or raw document content to the browser.
+- Reuse the existing provider/error contract and field-map/generation boundaries
+  from #TASK-2, #TASK-7, #TASK-8, #TASK-9, #TASK-11, #TASK-12, and #TASK-22; do not
+  silently turn an authorization failure into a successful-looking connection.
+- Use sanitized/disposable data, follow `_docs/api.md`, `_docs/operations.md`,
+  `_docs/credential-rotation.md`, and `_docs/testing-guidelines.md`, and do not
+  add dependencies without approval.
+
+## 24. Persist OAuth sessions and user Google credentials securely
+
+## Goal
+
+When done, authenticated users can return to the application and the backend can
+refresh Google access without exposing or losing per-user authorization state.
+
+## Acceptance criteria
+
+- [ ] A durable data model maps an internal user to the minimum identity fields,
+  session records, encrypted OAuth refresh-token material, granted scopes, and
+  revocation/expiry metadata.
+- [ ] Refresh tokens are encrypted at rest with a documented key source and
+  rotation/recovery procedure; plaintext tokens never appear in logs, URLs,
+  analytics, exceptions, tests, or browser storage.
+- [ ] Session lookup, expiration, rotation, logout, token refresh, revoked-token
+  handling, and deletion/revocation behavior are implemented and tested.
+- [ ] Data access is scoped by internal user identity; tests prove one user cannot
+  read another user’s token, template selection, invoice, or artifact records.
+- [ ] Backups, retention, deletion, and incident handling are documented without
+  real identities or tokens.
+
+## Out of scope
+
+- OAuth login/callback and authorization middleware, covered by #TASK-18.
+- Template selection and Google API handoff, covered by #TASK-22.
+- Google Cloud OAuth client and consent-screen setup, covered by #TASK-25.
+- Organization roles, billing, and team sharing, moved to a future numbered issue.
+
+## Constraints
+
+- Do not add a persistence or encryption dependency without approval; use the
+  project’s approved datastore/key-management services and document the choice.
+- Apply #TASK-14 privacy controls and follow `_docs/credential-rotation.md`.
+- Use synthetic identities/tokens only in tests; default tests must not require a
+  live database, Google account, or network.
+
+## 25. Configure the Google OAuth application and template-selection flow
+
+## Goal
+
+When done, the deployed application has a verified Google OAuth client and a
+least-privilege user flow for selecting authorized Google Docs templates.
+
+## Acceptance criteria
+
+- [ ] Google Cloud project APIs, OAuth consent screen, test/published user status,
+  authorized origins, and exact redirect URIs are documented for each environment.
+- [ ] Client IDs and secrets are supplied through secret management/configuration;
+  no client secret, refresh token, or real user data is committed to the repository.
+- [ ] The selected OAuth scopes are documented with their Drive/Docs capabilities,
+  verification implications, and the reason each is required by read/copy/export.
+- [ ] The preferred template-selection path uses Google Picker or an equivalent
+  per-file authorization boundary; pasted links are either supported with an
+  explicitly approved scope or rejected with an actionable explanation.
+- [ ] Disposable-account checks cover consent, callback, refresh, file selection,
+  inaccessible files, revoked access, and redirect/state failures.
+- [ ] Operations documentation explains consent changes, test-user management,
+  OAuth client rotation, redirect changes, and emergency disablement.
+
+## Out of scope
+
+- User login/session/authorization implementation, covered by #TASK-18.
+- Encrypted token/session persistence, covered by #TASK-24.
+- Template connection orchestration and review/generation handoff, covered by #TASK-22.
+- Organization administration and billing, moved to a future numbered issue.
+
+## Constraints
+
+- Follow Google’s OAuth web-server guidance, use authorization code flow with
+  `state` and offline access, and keep tokens on the backend.
+- Use the narrowest approved scopes and sanitized/disposable Google resources.
+- Follow `_docs/operations.md`, `_docs/api.md`, and
+  `_docs/testing-guidelines.md`; do not add dependencies without approval.
