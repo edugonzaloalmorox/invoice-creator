@@ -38,7 +38,7 @@ remains `503` until validation succeeds.
 | Variable | Example placeholder | Rules | Secret handling |
 | --- | --- | --- | --- |
 | `INVOICE_ENVIRONMENT` | `development` | Environment label | Non-secret |
-| `INVOICE_FRONTEND_ORIGIN` | `http://localhost:3000` | One HTTP(S) origin, no path; HTTPS is required in production | Non-secret |
+| `INVOICE_FRONTEND_ORIGIN` | `http://127.0.0.1:3000` | One HTTP(S) origin, no path; HTTPS is required in production | Non-secret |
 | `GOOGLE_CREDENTIALS_REFERENCE` | `secret-manager://invoice/google` | Reference only, never credential contents | Secret location; do not log |
 | `GOOGLE_TEMPLATE_ID` | `template-id-placeholder` | Configured template ID; current fixture uses `fixture-template` | Backend-only; do not expose |
 | `INVOICE_MAX_REQUEST_BYTES` | `1048576` | Positive, maximum 10 MiB | Non-secret |

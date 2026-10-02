@@ -2,7 +2,7 @@
 
 # Local development defaults. Existing environment values take precedence.
 export INVOICE_ENVIRONMENT ?= development
-export INVOICE_FRONTEND_ORIGIN ?= http://localhost:3000
+export INVOICE_FRONTEND_ORIGIN ?= http://127.0.0.1:3000
 export GOOGLE_CREDENTIALS_REFERENCE ?= fixture://local
 export GOOGLE_TEMPLATE_ID ?= fixture-template
 export INVOICE_MAX_REQUEST_BYTES ?= 1048576

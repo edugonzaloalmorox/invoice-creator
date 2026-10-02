@@ -38,6 +38,14 @@ class SecurityControlsTest(unittest.TestCase):
         self.assertEqual(denied["status"], "403 Forbidden")
         self.assertEqual(payload["error"]["code"], "origin_forbidden")
 
+    def test_cors_allows_the_makefile_frontend_origin(self):
+        values = configured_values()
+        values[CONFIG_FRONTEND_ORIGIN] = "http://127.0.0.1:3000"
+        app = create_app(load_config(values).config)
+        allowed, _ = call_with_origin(app, "/api/health", "http://127.0.0.1:3000")
+        self.assertEqual(allowed["status"], "200 OK")
+        self.assertEqual(allowed["headers"]["Access-Control-Allow-Origin"], "http://127.0.0.1:3000")
+
     def test_oversized_generation_is_rejected_before_provider_work(self):
         provider = FixtureDocumentProvider()
         values = configured_values()
@@ -56,4 +64,3 @@ class SecurityControlsTest(unittest.TestCase):
             last_status = status["status"]
         self.assertEqual(last_status, "429 Too Many Requests")
         self.assertTrue(all("TEST" not in key for key in app._generation_attempts))
-
