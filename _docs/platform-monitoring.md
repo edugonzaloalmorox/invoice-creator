@@ -45,11 +45,22 @@ never bank fields, credentials, document contents, PDFs, or raw provider payload
 
 ## Failure drill record
 
-Scenario: fixture provider export timeout.  
-Detection: automated test observed `504 provider_timeout`.  
-Escalation: service owner notified; sanitized request ID retained.  
-Mitigation: generation response failed safely and temporary copy cleanup was
-attempted.  
-Recovery: fixture health/readiness and full test suite returned green.  
-Production follow-up: platform owner must repeat the drill with approved alerting
-and record timestamps/owners in the deployment system.
+Run the credential-free drill with:
+
+```sh
+python3 scripts/failure_drill.py
+```
+
+The drill records sanitized evidence for a fixture-provider export timeout:
+
+| Stage | Evidence |
+| --- | --- |
+| Detection | `504 Gateway Timeout` and a successful metrics response |
+| Escalation | `ROLE_SERVICE_OWNER` recorded as the escalation owner |
+| Mitigation | Provider failure counted and temporary-copy deletion verified |
+| Recovery | A fresh fixture app returns `200 OK` from readiness |
+
+The script prints only statuses, role names, and aggregate counters. It does not
+print invoice values, document IDs, credentials, request IDs, or provider payloads.
+The platform owner must repeat the drill with approved alerting and record
+timestamps, notification evidence, and recovery owners in the deployment system.
