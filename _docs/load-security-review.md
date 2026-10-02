@@ -37,6 +37,24 @@ latency, and never prints response bodies or provider payloads. Platform CPU/mem
 cleanup counts, and penetration results must still be captured by the approved
 environment owner.
 
+### Local fixture run
+
+On 2026-10-02, the runner was executed against an isolated fixture-backed backend on
+local port 8001. This is reproducible functional evidence, not a production-capacity
+claim:
+
+| Endpoint | Requests | Concurrency | Statuses | Average / max latency |
+| --- | ---: | ---: | --- | ---: |
+| Preview | 20 | 4 | `200: 20` | 5.73 / 26.22 ms |
+| Generation | 10 | 2 | `200: 10` | 3.24 / 14.32 ms |
+
+Command used:
+
+```sh
+python3 scripts/load_test.py --base-url http://127.0.0.1:8001 --endpoint preview --requests 20 --concurrency 4 --timeout 5
+python3 scripts/load_test.py --base-url http://127.0.0.1:8001 --endpoint generate --requests 10 --concurrency 2 --timeout 5
+```
+
 ## Security findings
 
 The following register records the current credential-free review. `PASS` means the
