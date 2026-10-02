@@ -8,9 +8,9 @@ Reviewer evidence: `uv run pytest` (38 passed) and `cd frontend && npm test` (8 
 ## Verdict
 
 RETURNED for follow-up before production MVP acceptance. The supported
-credential-free workflow is green, but live Google authentication/provider work is
-still open under #TASK-8. This review records the evidence and does not claim a
-production Google deployment was exercised.
+credential-free workflow is green, and the read-only Google authentication/provider
+boundary is implemented under #TASK-8. This review does not claim a production
+Google deployment was exercised.
 
 ## Acceptance evidence
 
@@ -28,11 +28,14 @@ production Google deployment was exercised.
 - [x] Security checks cover exact-origin CORS, production HTTPS configuration,
   body limits, generation rate limiting, no-store PDF responses, and sensitive
   values absent from public errors/IDs/headers/temporary names.
+- [x] The read-only Google provider uses least-privilege scopes, classifies
+  credential/template/permission failures safely, normalizes supported document
+  structures, and has a mocked master-integrity check with no write operations.
 
 ## Explicit exclusions and deferrals
 
-- Live Google authentication, scopes, service-account sharing, and real-document
-  integration are not accepted here; follow #TASK-8.
+- A real Google disposable-document run is not included in the credential-free
+  evidence; it must be performed before production deployment.
 - User authentication/authorization is explicitly excluded; follow #TASK-18.
 - Credential rotation and incident operations are excluded; follow #TASK-19.
 - Load/penetration testing and platform provisioning are excluded; follow

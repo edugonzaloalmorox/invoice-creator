@@ -16,7 +16,7 @@ cd ..
 uv run python -m backend.run
 ```
 
-The last command is a dependency-free development server on
+The last command is a development server on
 `http://127.0.0.1:8000`. It is not a production server. The deployment topology
 for production is:
 
@@ -25,9 +25,10 @@ browser -> TLS/reverse proxy -> static frontend host
                          \-> WSGI backend -> configured document provider
 ```
 
-The current backend uses the deterministic fixture provider. Google authentication
-and the live provider are issue #8; production WSGI hosting, TLS termination, and
-platform provisioning are follow-up work under #TASK-21.
+The local Makefile uses the deterministic fixture provider. A configured
+non-`fixture://` credential reference selects the read-only Google provider.
+Production WSGI hosting, TLS termination, and platform provisioning are
+follow-up work under #TASK-21.
 
 ## Configuration
 
@@ -53,17 +54,19 @@ service cannot safely handle requests.
 
 ## Google provider setup boundary
 
-When issue #8 is implemented, use a dedicated service account with only the
+The read-only Google provider uses a dedicated service account with only the
 required least-privilege scopes:
 
-- Google Drive access needed to copy, export, and delete/trash the configured file.
-- Google Docs access needed to read and update the copied document.
+- `https://www.googleapis.com/auth/documents.readonly`
+- `https://www.googleapis.com/auth/drive.metadata.readonly`
 
-Share only the disposable/template document with the service account. Record the
-template ID and field-map version (`2026-01` in the current fixture) in deployment
-configuration. The master must be read-only to application workflows; replacements
-must occur on a temporary copy. The service account needs permission to delete or
-trash temporary copies. Never place a token, service-account key, real template ID,
+Mount the service-account JSON through the deployment secret manager and point
+`GOOGLE_CREDENTIALS_REFERENCE` at its absolute path or `file://` URI. Share only
+the configured template with the service account and record the template ID and
+field-map version (`2026-01`) in deployment configuration. The provider reads
+body, table, header, footer, and split-run text without mutating the master.
+Copying, replacement, export, and cleanup require the later provider tasks and
+broader Drive scopes. Never place a token, service-account key, real template ID,
 or document contents in this repository.
 
 ## Incident response

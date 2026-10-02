@@ -43,6 +43,19 @@ Content-Type: application/json
 }
 ```
 
+The configured Google provider reads the template with a service account using
+only `documents.readonly` and `drive.metadata.readonly` scopes. It accepts a
+secret-mounted JSON path or `file://` URI through
+`GOOGLE_CREDENTIALS_REFERENCE`; credential contents are never returned or logged.
+The provider verifies the configured file is a non-trashed Google Doc, then
+normalizes body, table, header, footer, and split text-run locations without
+calling any mutating Google API. Authentication, missing-template, permission,
+and transient provider failures are reduced to safe provider error classes.
+
+The local fixture and mocked Google-provider tests run in the default suite. A
+real Google check must use a disposable document shared with the service account;
+it is intentionally not part of the credential-free test command.
+
 ### `GET /api/ready`
 
 Reports whether the service has the configuration required to handle requests. This

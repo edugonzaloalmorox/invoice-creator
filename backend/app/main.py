@@ -1,4 +1,4 @@
-"""Dependency-free WSGI application for the credential-free invoice workflow."""
+"""WSGI application for the invoice workflow."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from typing import Callable
 
 from .config import AppConfig, ConfigLoad, load_config
 from .detection import detect_fields
+from .google_provider import GoogleDocumentProvider
 from .invoice import InvoiceInput, format_total, validate_invoice
 from .provider import FixtureDocumentProvider, ProviderError
 
@@ -272,6 +273,15 @@ def create_app(config: AppConfig | None = None, provider=None) -> Application:
         result = ConfigLoad(config, ())
     else:
         result = load_config()
+    if provider is None:
+        if result.ready and not result.config.credential_reference.startswith("fixture://"):
+            provider = GoogleDocumentProvider(
+                result.config.credential_reference,
+                connect_timeout_seconds=result.config.provider_connect_timeout_seconds,
+                read_timeout_seconds=result.config.provider_read_timeout_seconds,
+            )
+        else:
+            provider = FixtureDocumentProvider()
     return Application(result, provider)
 
 

@@ -1,6 +1,5 @@
 """Document-provider contract and deterministic credential-free fixture.
 
-The real Google provider will implement ``DocumentProvider`` in a later task.
 Provider methods return sanitized domain values and raise ``ProviderError``;
 provider payloads and document identifiers are intentionally not exposed by the
 exception's public message.

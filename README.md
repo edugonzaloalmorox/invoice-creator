@@ -2,10 +2,10 @@
 
 Invoice Filler is a small browser application for filling invoices automatically. It reviews invoice fields,
 calculates a total and download a generated PDF with the final invoice. The current MVP is
-credential-free and uses a deterministic in-memory fixture provider, so it can
-be developed and tested without Google credentials or a real document.
+uses a deterministic in-memory fixture provider for local development and
+credential-free tests. A read-only Google Docs provider is available for a
+secret-mounted service-account credential.
 
-Live Google authentication/provider integration is still pending (#TASK-8).
 The application currently supports one configured template, does not persist
 invoice data, and is not a production deployment.
 
@@ -55,6 +55,14 @@ export GOOGLE_PROVIDER_CONNECT_TIMEOUT_SECONDS=3
 export GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS=10
 uv run python -m backend.run
 ```
+
+For Google template reads, set `GOOGLE_CREDENTIALS_REFERENCE` to an absolute
+path or `file://` URI for a secret-mounted service-account JSON file. The
+provider requests only `documents.readonly` and `drive.metadata.readonly`
+scopes and requires the service account to have Viewer access to the configured
+Google Docs template. Never commit the JSON file or put its contents in an
+environment variable. Google copy, replacement, export, and cleanup remain
+outside the read-only provider task.
 
 ## Local workflow
 
@@ -125,9 +133,9 @@ The repository has automated coverage for validation/calculation, field
 detection, preview and generation, frontend behavior, provider failure paths,
 cleanup, CORS, request limits, rate limiting, and sensitive-data handling.
 
-The following are intentionally outside the current credential-free MVP:
+The following are intentionally outside the current MVP:
 
-- Live Google authentication and document-provider integration (#TASK-8)
+- Google document copying, replacement, export, and cleanup (#TASK-11 and #TASK-12)
 - User authentication and authorization (#TASK-18)
 - Credential rotation and incident operations (#TASK-19)
 - Load/penetration testing and platform provisioning (#TASK-20 and #TASK-21)

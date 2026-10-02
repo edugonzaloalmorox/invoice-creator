@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .field_map import FIELD_MAP, TEMPLATE_ID, TEMPLATE_VERSION
+from .field_map import FIELD_MAP, TEMPLATE_VERSION
 from .provider import DocumentProvider, DocumentSnapshot, ProviderError
 
 
@@ -10,7 +10,7 @@ def detect_fields(provider: DocumentProvider, template_id: str) -> dict:
     """Return reviewable mapped fields without exposing unrelated document text."""
 
     snapshot = provider.read_template(template_id)
-    if snapshot.document_id != TEMPLATE_ID or snapshot.version != TEMPLATE_VERSION:
+    if snapshot.document_id != template_id or snapshot.version != TEMPLATE_VERSION:
         raise ProviderError("read_template", "unsupported_template")
     fields = []
     warnings = []
@@ -26,6 +26,7 @@ def detect_fields(provider: DocumentProvider, template_id: str) -> dict:
             field_warnings.append("already_filled")
         if field_warnings:
             warnings.extend({"field": name, "code": warning} for warning in field_warnings)
+        source_location = locations[0] if locations else definition.location
         fields.append({
             "name": definition.name,
             "label": definition.label,
@@ -34,7 +35,7 @@ def detect_fields(provider: DocumentProvider, template_id: str) -> dict:
             "required": definition.required,
             "calculated": definition.calculated,
             "confidence": "high" if len(locations) == 1 else "low",
-            "source": {"section": definition.location.split(":", 1)[0], "location": definition.location},
+            "source": {"section": source_location.split(":", 1)[0], "location": source_location},
             "warnings": field_warnings,
         })
     return {"template": {"name": snapshot.title, "version": TEMPLATE_VERSION}, "fields": fields, "warnings": warnings}

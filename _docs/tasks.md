@@ -189,12 +189,12 @@ When done, the backend securely reads the configured Google Docs template with l
 
 ## Acceptance criteria
 
-- [ ] Authentication uses documented least-privilege scopes and a service-account/credential reference.
-- [ ] Required sharing permission and template configuration are documented without credentials.
-- [ ] Reads normalize supported body/table/header/footer/split-run structures while preserving locations.
-- [ ] Missing/invalid credentials, missing template, and permission errors are safely classified without secrets/provider payloads.
-- [ ] An integration check proves the master revision/content is unchanged.
-- [ ] Mock/disposable integration tests are separated from credential-free tests.
+- [x] Authentication uses documented least-privilege scopes and a service-account/credential reference.
+- [x] Required sharing permission and template configuration are documented without credentials.
+- [x] Reads normalize supported body/table/header/footer/split-run structures while preserving locations.
+- [x] Missing/invalid credentials, missing template, and permission errors are safely classified without secrets/provider payloads.
+- [x] An integration check proves the master revision/content is unchanged.
+- [x] Mock/disposable integration tests are separated from credential-free tests.
 
 ## Out of scope
 
