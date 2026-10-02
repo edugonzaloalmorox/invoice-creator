@@ -20,6 +20,7 @@ KNOWN_EVENTS = {
     "provider_failure",
     "cleanup_failure",
     "rate_limited",
+    "suspicious_volume",
 }
 
 

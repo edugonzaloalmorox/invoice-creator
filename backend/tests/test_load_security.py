@@ -81,6 +81,18 @@ class BoundedSecurityRegressionTest(unittest.TestCase):
         self.assertEqual(metrics["operational_events"]["cleanup_failure"], 1)
         self.assertNotIn("fixture", json.dumps(metrics).lower())
 
+    def test_rate_limit_client_state_is_bounded_under_suspicious_volume(self):
+        app = create_app(load_config(configured_values()).config, FixtureDocumentProvider())
+
+        for index in range(1001):
+            status, _ = call_raw(app, b"{}", remote_addr=f"198.51.100.{index}")
+            self.assertEqual(status["status"], "400 Bad Request")
+
+        self.assertLessEqual(len(app._generation_attempts), 1000)
+        metrics_status, metrics = call(app, "/api/metrics")
+        self.assertEqual(metrics_status["status"], "200 OK")
+        self.assertEqual(metrics["operational_events"]["suspicious_volume"], 1)
+
     def test_malformed_payload_does_not_echo_sensitive_data(self):
         app = create_app(load_config(configured_values()).config)
         secret = b'{"bank_name":"TEST-SENSITIVE-BANK","bad":}'

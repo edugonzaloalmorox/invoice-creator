@@ -22,8 +22,9 @@ before production approval.
 ## Metrics, dashboards, and alerts
 
 Track endpoint, status class, latency, readiness, provider operation class, cleanup
-success/failure, rate-limit count, and suspicious request volume. Suggested initial
-alerts:
+success/failure, rate-limit count, and aggregate suspicious-volume events. The
+generation limiter bounds remembered client buckets to 1,000; metrics never expose
+the client addresses. Suggested initial alerts:
 
 The backend exposes safe aggregate request/status/latency data and bounded provider,
 cleanup, and rate-limit event counters at `GET /api/metrics`. It is suitable for a

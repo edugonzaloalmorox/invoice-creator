@@ -118,6 +118,7 @@ class Application:
         self._generation_attempts: dict[str, list[float]] = {}
         self._generation_limit = 10
         self._generation_window_seconds = 60.0
+        self._max_generation_clients = 1000
 
     def __call__(self, environ: dict, start_response: Callable) -> list[bytes]:
         request_id = _request_id()
@@ -191,6 +192,9 @@ class Application:
     def _allow_generation(self, environ: dict) -> bool:
         now = time.monotonic()
         client = environ.get("REMOTE_ADDR", "unknown")
+        if client not in self._generation_attempts and len(self._generation_attempts) >= self._max_generation_clients:
+            self._generation_attempts.pop(next(iter(self._generation_attempts)))
+            self.metrics.record_event("suspicious_volume")
         attempts = [stamp for stamp in self._generation_attempts.get(client, []) if now - stamp < self._generation_window_seconds]
         if len(attempts) >= self._generation_limit:
             self._generation_attempts[client] = attempts

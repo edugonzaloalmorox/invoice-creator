@@ -113,7 +113,7 @@ contents or provider payloads.
 
 Returns aggregate request counts by bounded endpoint and status class, total request
 duration by endpoint, and bounded operational event counters for provider failures,
-cleanup failures, and rate limiting. It never includes request bodies, query values,
+cleanup failures, rate limiting, and suspicious volume. It never includes request bodies, query values,
 credentials, document IDs, bank details, client identifiers, or PDF content. Platform
 monitoring may scrape this endpoint or replace it with an authenticated metrics
 exporter.
