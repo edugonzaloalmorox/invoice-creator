@@ -39,6 +39,20 @@ environment owner.
 
 ## Security findings
 
-No unresolved findings in the credential-free review. Live Google access control,
-platform hardening, and penetration testing remain owned by #TASK-8, #TASK-18,
-and #TASK-21. Retest status must be updated here after those environments exist.
+The following register records the current credential-free review. `PASS` means the
+check is covered by the listed automated test; `PENDING` means it requires the
+approved disposable environment or a decision tracked by the linked follow-up.
+
+| Finding/check | Severity | Evidence | Owner | Remediation or follow-up | Retest status |
+| --- | --- | --- | --- | --- | --- |
+| Injection and malformed input handling | High | `backend/tests/test_security.py`, `backend/tests/test_load_security.py` | `ROLE_SERVICE_OWNER` | Keep bounded parsing and safe error responses; rerun after request parsing changes | PASS: 2026-10-02 |
+| CORS and error leakage | High | `backend/tests/test_security.py`, `backend/tests/test_load_security.py` | `ROLE_SECURITY_ESCALATION` | Preserve exact-origin checks and sanitized error bodies; rerun after middleware changes | PASS: 2026-10-02 |
+| Artifact exposure and cleanup | High | `backend/tests/test_generate.py`, `backend/tests/test_load_security.py` | `ROLE_SERVICE_OWNER` | Keep temporary-copy cleanup and non-sensitive response headers; rerun after provider changes | PASS: 2026-10-02 |
+| Dependency lock and runtime configuration | Medium | `pyproject.toml`, `uv.lock`, `backend/tests/test_configuration.py`; `uv run pytest` | `ROLE_SERVICE_OWNER` | Review dependency updates and validate bounds/timeouts/origin before each deployment | PASS: 2026-10-02 |
+| Access control between users | Critical | No authenticated runtime exists in the MVP | `ROLE_IDENTITY_OWNER` | Implement and test the approved identity/session model under #TASK-18 | PENDING decision and implementation: #TASK-18 |
+| Live provider authorization and platform hardening | High | Credential-free fixtures only | `ROLE_PLATFORM_OWNER` | Run against an approved disposable environment with sanitized credentials and record findings | PENDING environment: #TASK-21 |
+
+No unresolved findings remain in the credential-free checks. The pending rows are
+explicitly not represented as passes: live Google access control, platform
+hardening, and penetration testing require #TASK-18 and #TASK-21 plus an approved
+disposable environment. Retest this register whenever those follow-ups change.
