@@ -146,7 +146,7 @@ class Application:
         if environ.get("REQUEST_METHOD") == "OPTIONS" and request_origin:
             if configured_origin != request_origin:
                 return _error_response(start_response, "403 Forbidden", "origin_forbidden", "Request origin is not allowed.", request_id)
-            start_response("204 No Content", [("Content-Length", "0"), ("Access-Control-Allow-Origin", request_origin), ("Access-Control-Allow-Methods", "GET, POST, OPTIONS"), ("Access-Control-Allow-Headers", "Content-Type, X-Template-Selection"), ("Cache-Control", "no-store"), ("X-Request-ID", request_id)])
+            start_response("204 No Content", [("Content-Length", "0"), ("Access-Control-Allow-Methods", "GET, POST, OPTIONS"), ("Access-Control-Allow-Headers", "Content-Type, X-Template-Selection"), ("Cache-Control", "no-store"), ("X-Request-ID", request_id)])
             return [b""]
         if path == "/api/template/connect":
             if environ.get("REQUEST_METHOD") != "POST":

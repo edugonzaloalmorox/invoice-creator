@@ -46,6 +46,32 @@ class SecurityControlsTest(unittest.TestCase):
         self.assertEqual(allowed["status"], "200 OK")
         self.assertEqual(allowed["headers"]["Access-Control-Allow-Origin"], "http://127.0.0.1:3000")
 
+    def test_template_preflight_has_one_origin_header(self):
+        values = configured_values()
+        values[CONFIG_FRONTEND_ORIGIN] = "http://127.0.0.1:3000"
+        app = create_app(load_config(values).config)
+        captured = {}
+
+        def start_response(status, headers):
+            captured["status"] = status
+            captured["headers"] = headers
+
+        app(
+            {
+                "REQUEST_METHOD": "OPTIONS",
+                "PATH_INFO": "/api/template/connect",
+                "HTTP_ORIGIN": "http://127.0.0.1:3000",
+                "HTTP_ACCESS_CONTROL_REQUEST_METHOD": "POST",
+                "HTTP_ACCESS_CONTROL_REQUEST_HEADERS": "content-type",
+                "CONTENT_LENGTH": "0",
+                "wsgi.input": BytesIO(),
+            },
+            start_response,
+        )
+        origin_headers = [value for name, value in captured["headers"] if name == "Access-Control-Allow-Origin"]
+        self.assertEqual(captured["status"], "204 No Content")
+        self.assertEqual(origin_headers, ["http://127.0.0.1:3000"])
+
     def test_oversized_generation_is_rejected_before_provider_work(self):
         provider = FixtureDocumentProvider()
         values = configured_values()
