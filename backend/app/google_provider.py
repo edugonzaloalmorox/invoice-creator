@@ -7,6 +7,7 @@ import re
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import google.auth.exceptions
 import httplib2
@@ -20,11 +21,30 @@ from .provider import DocumentSnapshot, ProviderError
 
 
 GOOGLE_SCOPES = (
-    "https://www.googleapis.com/auth/documents.readonly",
-    "https://www.googleapis.com/auth/drive.metadata.readonly",
+    "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/drive.file",
 )
 GOOGLE_DOC_MIME_TYPE = "application/vnd.google-apps.document"
 FIELD_MARKER = re.compile(r"\{\{([a-z][a-z0-9_]*)\}\}")
+GOOGLE_DOCUMENT_ID = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+def google_document_id(document_url: str) -> str | None:
+    """Return a document ID only for a canonical Google Docs document URL."""
+
+    if not isinstance(document_url, str) or len(document_url) > 2048:
+        return None
+    try:
+        parsed = urlparse(document_url)
+    except ValueError:
+        return None
+    if parsed.scheme != "https" or parsed.hostname != "docs.google.com":
+        return None
+    parts = [part for part in parsed.path.split("/") if part]
+    if len(parts) < 3 or parts[:2] != ["document", "d"]:
+        return None
+    document_id = parts[2]
+    return document_id if GOOGLE_DOCUMENT_ID.fullmatch(document_id) else None
 
 
 def _credential_path(reference: str) -> Path:
@@ -124,11 +144,7 @@ def normalize_google_document(document: Mapping[str, Any], *, document_id: str) 
 
 
 class GoogleDocumentProvider:
-    """Read-only provider backed by Google Drive and Docs REST APIs.
-
-    The provider intentionally implements only template reading for #TASK-8.
-    Mutating operations remain unavailable until the copy/replacement task.
-    """
+    """Google Drive/Docs provider using an isolated temporary copy for filling."""
 
     def __init__(
         self,
@@ -178,13 +194,58 @@ class GoogleDocumentProvider:
             raise _provider_error("read_template", error) from error
 
     def copy_document(self, template_id: str, title: str) -> str:
-        raise ProviderError("copy_document", "not_supported")
+        try:
+            drive, _ = self._services()
+            result = (
+                drive.files()
+                .copy(fileId=template_id, body={"name": title}, fields="id", supportsAllDrives=True)
+                .execute(num_retries=0)
+            )
+            document_id = result.get("id")
+            if not document_id:
+                raise ProviderError("copy_document", "malformed_response")
+            return document_id
+        except ProviderError:
+            raise
+        except Exception as error:
+            raise _provider_error("copy_document", error) from error
 
     def replace_values(self, document_id: str, replacements: Mapping[str, str]) -> None:
-        raise ProviderError("replace_values", "not_supported")
+        try:
+            _, docs = self._services()
+            requests = [
+                {
+                    "replaceAllText": {
+                        "containsText": {"text": "{{" + field + "}}", "matchCase": True},
+                        "replaceText": str(value),
+                    }
+                }
+                for field, value in replacements.items()
+            ]
+            if requests:
+                docs.documents().batchUpdate(documentId=document_id, body={"requests": requests}).execute(num_retries=0)
+        except ProviderError:
+            raise
+        except Exception as error:
+            raise _provider_error("replace_values", error) from error
 
     def export_pdf(self, document_id: str) -> bytes:
-        raise ProviderError("export_pdf", "not_supported")
+        try:
+            drive, _ = self._services()
+            pdf = drive.files().export(fileId=document_id, mimeType="application/pdf").execute(num_retries=0)
+            if not isinstance(pdf, bytes) or not pdf:
+                raise ProviderError("export_pdf", "empty_response")
+            return pdf
+        except ProviderError:
+            raise
+        except Exception as error:
+            raise _provider_error("export_pdf", error) from error
 
     def delete_document(self, document_id: str) -> None:
-        raise ProviderError("delete_document", "not_supported")
+        try:
+            drive, _ = self._services()
+            drive.files().delete(fileId=document_id, supportsAllDrives=True).execute(num_retries=0)
+        except ProviderError:
+            raise
+        except Exception as error:
+            raise _provider_error("delete_document", error) from error

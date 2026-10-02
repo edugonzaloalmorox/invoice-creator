@@ -26,7 +26,7 @@ browser -> TLS/reverse proxy -> static frontend host
 ```
 
 The local Makefile uses the deterministic fixture provider. A configured
-non-`fixture://` credential reference selects the read-only Google provider.
+non-`fixture://` credential reference selects the Google provider.
 Production WSGI hosting, TLS termination, and platform provisioning are
 follow-up work under #TASK-21.
 
@@ -54,20 +54,19 @@ service cannot safely handle requests.
 
 ## Google provider setup boundary
 
-The read-only Google provider uses a dedicated service account with only the
+The Google provider uses a dedicated service account with only the
 required least-privilege scopes:
 
-- `https://www.googleapis.com/auth/documents.readonly`
-- `https://www.googleapis.com/auth/drive.metadata.readonly`
+- `https://www.googleapis.com/auth/documents`
+- `https://www.googleapis.com/auth/drive.file`
 
 Mount the service-account JSON through the deployment secret manager and point
 `GOOGLE_CREDENTIALS_REFERENCE` at its absolute path or `file://` URI. Share only
 the configured template with the service account and record the template ID and
 field-map version (`2026-01`) in deployment configuration. The provider reads
-body, table, header, footer, and split-run text without mutating the master.
-Copying, replacement, export, and cleanup require the later provider tasks and
-broader Drive scopes. Never place a token, service-account key, real template ID,
-or document contents in this repository.
+body, table, header, footer, and split-run text, then performs replacement only
+on a temporary copy before export and cleanup. Never place a token, service-account
+key, real template ID, or document contents in this repository.
 
 ## Incident response
 

@@ -1,4 +1,4 @@
-import { renderInvoiceForm, requestPreview } from "./app.js";
+import { renderInvoiceForm, renderTemplateConnection, requestPreview, requestTemplate } from "./app.js";
 import { requestGeneration } from "./review.js";
 
 const root = document.querySelector("#app");
@@ -13,14 +13,19 @@ async function start() {
   try {
     const response = await fetch("http://localhost:8000/api/health");
     if (!response.ok) throw new Error("Health check failed");
-    renderInvoiceForm(root, { preview: requestPreview });
-    wireGeneration();
+    renderTemplateConnection(root, {
+      connect: requestTemplate,
+      onConnected: ({ selection_token: templateToken }) => {
+        renderInvoiceForm(root, { preview: (values) => requestPreview(values, { templateToken }) });
+        wireGeneration(templateToken);
+      },
+    });
   } catch {
     renderApplicationError("Start the backend with <code>uv run python -m backend.run</code>, then try again.");
   }
 }
 
-function wireGeneration() {
+function wireGeneration(templateToken) {
   let message = "";
   const update = () => {
     const form = root.querySelector("form");
@@ -58,7 +63,7 @@ function wireGeneration() {
     update();
     const values = Object.fromEntries([...new FormData(form).entries()]);
     try {
-      const result = await requestGeneration(values);
+      const result = await requestGeneration(values, { templateToken });
       message = `${result.filename} downloaded.`;
     } catch (error) {
       message = error.message;

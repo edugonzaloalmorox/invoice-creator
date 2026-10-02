@@ -43,14 +43,15 @@ Content-Type: application/json
 }
 ```
 
-The configured Google provider reads the template with a service account using
-only `documents.readonly` and `drive.metadata.readonly` scopes. It accepts a
+The configured Google provider reads and fills the template with a service
+account using only `documents` and `drive.file` scopes. It accepts a
 secret-mounted JSON path or `file://` URI through
 `GOOGLE_CREDENTIALS_REFERENCE`; credential contents are never returned or logged.
 The provider verifies the configured file is a non-trashed Google Doc, then
-normalizes body, table, header, footer, and split text-run locations without
-calling any mutating Google API. Authentication, missing-template, permission,
-and transient provider failures are reduced to safe provider error classes.
+normalizes body, table, header, footer, and split text-run locations. Filling
+uses a temporary Drive copy and Docs `replaceAllText` requests, followed by PDF
+export and cleanup. Authentication, missing-template, permission, and transient
+provider failures are reduced to safe provider error classes.
 
 The local fixture and mocked Google-provider tests run in the default suite. A
 real Google check must use a disposable document shared with the service account;
@@ -90,6 +91,23 @@ The application reads these environment variables at startup:
 Missing, malformed, or out-of-range values make readiness fail. Public errors only
 identify the safe error class; they do not include configuration values or secret
 references. Liveness does not load or validate Google configuration.
+
+### `POST /api/template/connect`
+
+Authenticates and reads a Google Docs template link through the configured
+backend provider. The request body is:
+
+```json
+{"url":"https://docs.google.com/document/d/example/edit"}
+```
+
+The response contains an opaque `selection_token`, sanitized template metadata,
+and mapped review fields. The browser sends that token in the
+`X-Template-Selection` header for subsequent preview and generation requests;
+it never sends a document ID directly. Malformed or non-Google links return
+`400 invalid_template_url`. Missing access, invalid credentials, trashed/non-Doc
+files, and provider failures return safe classified errors without document
+contents or provider payloads.
 
 ### `GET /api/template/fields`
 

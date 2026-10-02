@@ -1,10 +1,10 @@
 # Invoice Filler
 
 Invoice Filler is a small browser application for filling invoices automatically. It reviews invoice fields,
-calculates a total and download a generated PDF with the final invoice. The current MVP is
-uses a deterministic in-memory fixture provider for local development and
-credential-free tests. A read-only Google Docs provider is available for a
-secret-mounted service-account credential.
+calculates a total and downloads a generated PDF with the final invoice. The
+application uses a deterministic in-memory fixture provider for local development
+and credential-free tests. A Google Docs provider is available for a secret-mounted
+service-account credential and can fill an isolated copy of the selected template.
 
 The application currently supports one configured template, does not persist
 invoice data, and is not a production deployment.
@@ -56,21 +56,22 @@ export GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS=10
 uv run python -m backend.run
 ```
 
-For Google template reads, set `GOOGLE_CREDENTIALS_REFERENCE` to an absolute
+For Google template access, set `GOOGLE_CREDENTIALS_REFERENCE` to an absolute
 path or `file://` URI for a secret-mounted service-account JSON file. The
-provider requests only `documents.readonly` and `drive.metadata.readonly`
-scopes and requires the service account to have Viewer access to the configured
-Google Docs template. Never commit the JSON file or put its contents in an
-environment variable. Google copy, replacement, export, and cleanup remain
-outside the read-only provider task.
+provider requests only the `documents` and `drive.file` scopes and requires the
+service account to have access to the configured Google Docs template. It creates
+an isolated temporary copy for replacement and deletes it after export. Never
+commit the JSON file or put its contents in an environment variable.
 
 ## Local workflow
 
 1. Enter invoice details in the browser.
 2. Preview the invoice. The backend validates and normalizes the input and
    calculates `days_worked * pay_per_day` using decimal arithmetic.
-3. Review detected template fields and resolve any required warnings.
-4. Generate the PDF. The backend validates and recalculates the values before
+3. Paste the Google Docs template link and wait for the backend to authenticate
+   and read its mapped fields.
+4. Review detected template fields and resolve any required warnings.
+5. Generate the PDF. The backend validates and recalculates the values before
    exporting the fixture PDF; the browser downloads the resulting file.
 
 The backend is authoritative for validation, calculations, template selection,
@@ -83,6 +84,7 @@ arbitrary template.
 | --- | --- |
 | `GET /api/health` | Lightweight liveness check; does not require configuration |
 | `GET /api/ready` | Reports whether startup configuration is valid |
+| `POST /api/template/connect` | Authenticates a Google Docs link and loads mapped fields |
 | `GET /api/template/fields` | Loads mapped fields for review |
 | `POST /api/invoices/preview` | Validates input and calculates the total without creating a document |
 | `POST /api/invoices/generate` | Creates a temporary fixture copy, replaces values, and returns a PDF |
@@ -135,7 +137,6 @@ cleanup, CORS, request limits, rate limiting, and sensitive-data handling.
 
 The following are intentionally outside the current MVP:
 
-- Google document copying, replacement, export, and cleanup (#TASK-11 and #TASK-12)
 - User authentication and authorization (#TASK-18)
 - Credential rotation and incident operations (#TASK-19)
 - Load/penetration testing and platform provisioning (#TASK-20 and #TASK-21)

@@ -8,7 +8,7 @@ Reviewer evidence: `uv run pytest` (48 passed) and `npm --prefix frontend test` 
 ## Verdict
 
 ACCEPTED for the credential-free MVP. The supported unauthenticated workflow and
-read-only Google authentication/provider boundary are implemented and verified.
+Google authentication/provider boundary are implemented and verified.
 This review does not claim a production Google deployment was exercised.
 
 ## Acceptance evidence
@@ -27,7 +27,7 @@ This review does not claim a production Google deployment was exercised.
 - [x] Security checks cover exact-origin CORS, production HTTPS configuration,
   body limits, generation rate limiting, no-store PDF responses, and sensitive
   values absent from public errors/IDs/headers/temporary names.
-- [x] The read-only Google provider uses least-privilege scopes, classifies
+- [x] The Google provider uses least-privilege scopes, classifies
   credential/template/permission failures safely, normalizes supported document
   structures, and has a mocked master-integrity check with no write operations.
 

@@ -22,7 +22,7 @@ def configured_app(provider):
     return create_app(load_config(values).config, provider)
 
 
-def call_raw(app, body: bytes):
+def call_raw(app, body: bytes, headers: dict[str, str] | None = None):
     captured = {}
 
     def start_response(status, headers):
@@ -33,6 +33,7 @@ def call_raw(app, body: bytes):
         "REQUEST_METHOD": "POST", "PATH_INFO": "/api/invoices/generate",
         "CONTENT_TYPE": "application/json", "CONTENT_LENGTH": str(len(body)),
         "wsgi.input": BytesIO(body),
+        **{f"HTTP_{name.upper().replace('-', '_')}": value for name, value in (headers or {}).items()},
     }, start_response))
     return captured, response
 

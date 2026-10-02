@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { appName, createInvoiceFormController, invoiceFields, requestPreview } from "../src/app.js";
+import { appName, createInvoiceFormController, invoiceFields, renderTemplateConnection, requestPreview, requestTemplate } from "../src/app.js";
 import { createFieldReviewController, requestGeneration } from "../src/review.js";
 
 test("frontend scaffold is importable", () => {
@@ -47,6 +47,56 @@ test("preview request sends only the form payload", async () => {
   assert.equal(JSON.parse(request.body).bank_name, "TEST-BANK");
   assert.equal(JSON.parse(request.body).total_amount, undefined);
   assert.equal(result.ok, true);
+});
+
+test("template connection sends only the link and returns the sanitized response", async () => {
+  let request;
+  const result = await requestTemplate("https://docs.google.com/document/d/fixture-template/edit", {
+    fetchImpl: async (url, options) => {
+      request = { url, options };
+      return { ok: true, json: async () => ({ selection_token: "tpl_opaque", fields: [] }) };
+    },
+  });
+  assert.equal(request.url, "http://localhost:8000/api/template/connect");
+  assert.equal(request.options.method, "POST");
+  assert.deepEqual(JSON.parse(request.options.body), { url: "https://docs.google.com/document/d/fixture-template/edit" });
+  assert.equal(result.selection_token, "tpl_opaque");
+});
+
+test("preview and generation requests carry the opaque template selection", async () => {
+  let previewHeaders;
+  await requestPreview({ currency: "EUR" }, {
+    templateToken: "tpl_opaque",
+    fetchImpl: async (_url, options) => {
+      previewHeaders = options.headers;
+      return { ok: true, json: async () => ({}) };
+    },
+  });
+  assert.equal(previewHeaders["X-Template-Selection"], "tpl_opaque");
+});
+
+test("template connection prevents duplicate submissions and preserves the link on failure", async () => {
+  let resolveConnection;
+  let calls = 0;
+  let rendered = "";
+  const form = { addEventListener: (_type, listener) => { form.submit = listener; } };
+  const input = { addEventListener: (_type, listener) => { input.input = listener; } };
+  const root = {
+    set innerHTML(value) { rendered = value; },
+    querySelector(selector) { return selector === "form" ? form : input; },
+  };
+  renderTemplateConnection(root, {
+    connect: () => { calls += 1; return new Promise((resolve) => { resolveConnection = resolve; }); },
+  });
+  input.input({ target: { value: "https://docs.google.com/document/d/fixture-template/edit" } });
+  const event = { preventDefault() {} };
+  const first = form.submit(event);
+  const second = form.submit(event);
+  assert.equal(calls, 1);
+  resolveConnection({ ok: false, error: { message: "Access denied." } });
+  await first;
+  await second;
+  assert.match(rendered, /https:\/\/docs\.google\.com\/document\/d\/fixture-template\/edit/);
 });
 
 test("field review blocks unresolved required warnings and preserves edits through retry", async () => {

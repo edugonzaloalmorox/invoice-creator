@@ -61,9 +61,44 @@ export function createInvoiceFormController({ preview } = {}) {
   };
 }
 
-export async function requestPreview(values, { fetchImpl = globalThis.fetch } = {}) {
+export async function requestTemplate(url, { fetchImpl = globalThis.fetch } = {}) {
+  const response = await fetchImpl(`${apiOrigin()}/api/template/connect`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }),
+  });
+  const payload = await response.json();
+  return response.ok ? { ok: true, ...payload } : { ok: false, error: payload.error };
+}
+
+export function renderTemplateConnection(root, { connect = requestTemplate, onConnected } = {}) {
+  let url = "";
+  let status = "idle";
+  let error = "";
+  const render = () => {
+    const pending = status === "pending";
+    root.innerHTML = `<section class="template-connect" aria-labelledby="template-heading"><p class="eyebrow">Start with a template</p><h1 id="template-heading">Where is your template?</h1><p class="template-help">Paste the link to the Google Docs template you want to fill.</p><form><label for="template-url">Google Docs template link</label><input id="template-url" name="template-url" type="url" value="${escapeHtml(url)}" placeholder="https://docs.google.com/document/d/..." autocomplete="off" required ${pending ? "disabled" : ""} ${error ? 'aria-invalid="true" aria-describedby="template-error"' : ""}>${error ? `<p id="template-error" class="error" role="alert">${escapeHtml(error)}</p>` : ""}<button class="button button-primary" type="submit" ${pending ? "disabled" : ""}>${pending ? "Checking template…" : "Load template"}</button></form></section>`;
+    const form = root.querySelector("form");
+    const input = root.querySelector("#template-url");
+    input?.addEventListener("input", (event) => { url = event.target.value; error = ""; });
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (status === "pending" || !url.trim()) return;
+      status = "pending"; error = ""; render();
+      try {
+        const result = await connect(url);
+        if (!result || result.ok === false) throw new Error(result?.error?.message || "The template could not be loaded.");
+        onConnected?.(result);
+      } catch (connectionError) {
+        status = "error"; error = connectionError.message || "The template could not be loaded. Try again."; render();
+      }
+    });
+  };
+  render();
+  return { getValue: () => url, render };
+}
+
+export async function requestPreview(values, { fetchImpl = globalThis.fetch, templateToken } = {}) {
   const response = await fetchImpl(`${apiOrigin()}/api/invoices/preview`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
+    method: "POST", headers: { "Content-Type": "application/json", ...(templateToken ? { "X-Template-Selection": templateToken } : {}) }, body: JSON.stringify(values),
   });
   const payload = await response.json();
   return response.ok ? { ok: true, ...payload } : { ok: false, error: payload.error };

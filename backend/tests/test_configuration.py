@@ -31,7 +31,7 @@ def configured_values() -> dict[str, str]:
     }
 
 
-def call(app, path: str, *, method: str = "GET", body: bytes = b"", content_type: str = ""):
+def call(app, path: str, *, method: str = "GET", body: bytes = b"", content_type: str = "", headers: dict[str, str] | None = None):
     captured = {}
 
     def start_response(status, headers):
@@ -46,6 +46,7 @@ def call(app, path: str, *, method: str = "GET", body: bytes = b"", content_type
                 "CONTENT_TYPE": content_type,
                 "CONTENT_LENGTH": str(len(body)),
                 "wsgi.input": BytesIO(body),
+                **{f"HTTP_{name.upper().replace('-', '_')}": value for name, value in (headers or {}).items()},
             },
             start_response,
         )

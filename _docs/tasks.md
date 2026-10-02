@@ -535,28 +535,28 @@ invoice review and fill flow.
 
 ## Acceptance criteria
 
-- [ ] The initial template screen shows a clearly labeled input with text such as
+- [x] The initial template screen shows a clearly labeled input with text such as
   “Where is your template?” and a primary action to load the template.
-- [ ] The input accepts a Google Docs document URL, preserves the user’s value on
+- [x] The input accepts a Google Docs document URL, preserves the user’s value on
   validation or network failure, and does not place the URL in the browser URL,
   analytics payload, logs, or request IDs.
-- [ ] Submitting the link shows an accessible loading state and prevents duplicate
+- [x] Submitting the link shows an accessible loading state and prevents duplicate
   submissions until the request completes.
-- [ ] The frontend sends the link over the existing authenticated backend channel;
+- [x] The frontend sends the link over the existing authenticated backend channel;
   the backend extracts and validates the Google document ID and uses the configured
   service-account credentials to verify access without exposing credentials.
-- [ ] Links from unsupported hosts, malformed URLs, trashed documents, non-Google
+- [x] Links from unsupported hosts, malformed URLs, trashed documents, non-Google
   files, inaccessible documents, and provider failures return safe, actionable
   errors without leaking document contents or provider payloads.
-- [ ] A successful response contains only the sanitized template identity, field-map
+- [x] A successful response contains only the sanitized template identity, field-map
   version, and reviewable field metadata needed by the existing review UI; raw
   document content and credentials are never returned.
-- [ ] After successful loading, the selected template is used by preview and
+- [x] After successful loading, the selected template is used by preview and
   generation, and the user can fill the mapped fields and download the resulting
   PDF through the existing flow.
-- [ ] Retry and back-navigation preserve the entered link and any user-edited invoice
+- [x] Retry and back-navigation preserve the entered link and any user-edited invoice
   values without creating duplicate provider work.
-- [ ] Tests cover valid links, invalid links, access denial, provider failure,
+- [x] Tests cover valid links, invalid links, access denial, provider failure,
   duplicate submission, sensitive-value redaction, and successful handoff to the
   existing fill/generation flow using a disposable or mocked document.
 

@@ -8,6 +8,7 @@ from googleapiclient.errors import HttpError
 from backend.app.google_provider import (
     GOOGLE_DOC_MIME_TYPE,
     GoogleDocumentProvider,
+    google_document_id,
     load_service_account_credentials,
     normalize_google_document,
 )
@@ -31,6 +32,18 @@ class FakeFiles:
         self.calls.append(kwargs)
         return FakeRequest(self.metadata)
 
+    def copy(self, **kwargs):
+        self.calls.append(kwargs)
+        return FakeRequest({"id": "temporary-copy-id"})
+
+    def export(self, **kwargs):
+        self.calls.append(kwargs)
+        return FakeRequest(b"%PDF-1.4\n%%EOF\n")
+
+    def delete(self, **kwargs):
+        self.calls.append(kwargs)
+        return FakeRequest({})
+
 
 class FakeDrive:
     def __init__(self, metadata):
@@ -50,6 +63,10 @@ class FakeDocuments:
     def get(self, **kwargs):
         self.calls.append(kwargs)
         return FakeRequest(self.document)
+
+    def batchUpdate(self, **kwargs):
+        self.calls.append(kwargs)
+        return FakeRequest({})
 
 
 class FakeDocs:
@@ -86,6 +103,11 @@ def google_document():
 
 
 class GoogleProviderTest(unittest.TestCase):
+    def test_google_document_id_accepts_only_google_docs_links(self):
+        self.assertEqual(google_document_id("https://docs.google.com/document/d/abc_123/edit"), "abc_123")
+        self.assertIsNone(google_document_id("http://docs.google.com/document/d/abc/edit"))
+        self.assertIsNone(google_document_id("https://example.test/document/d/abc/edit"))
+
     def test_normalizes_body_table_header_footer_and_split_runs(self):
         snapshot = normalize_google_document(google_document(), document_id="real-template-id")
 
@@ -142,14 +164,19 @@ class GoogleProviderTest(unittest.TestCase):
             with self.assertRaisesRegex(ProviderError, "credentials_invalid"):
                 load_service_account_credentials(credential_file.name)
 
-    def test_mutating_operations_are_not_available_in_reading_task(self):
-        provider = GoogleDocumentProvider("/run/secrets/google.json", drive_service=FakeDrive({}), docs_service=FakeDocs({}))
-        operations = (
-            (provider.copy_document, ("template", "title")),
-            (provider.replace_values, ("document", {})),
-            (provider.export_pdf, ("document",)),
-            (provider.delete_document, ("document",)),
-        )
-        for operation, arguments in operations:
-            with self.assertRaisesRegex(ProviderError, "not_supported"):
-                operation(*arguments)
+    def test_copy_replace_export_and_delete_use_isolated_google_operations(self):
+        drive = FakeDrive({})
+        docs = FakeDocs({})
+        provider = GoogleDocumentProvider("/run/secrets/google.json", drive_service=drive, docs_service=docs)
+
+        copy_id = provider.copy_document("template", "invoice-2026-09-01")
+        provider.replace_values(copy_id, {"bank_name": "TEST-BANK"})
+        pdf = provider.export_pdf(copy_id)
+        provider.delete_document(copy_id)
+
+        self.assertEqual(copy_id, "temporary-copy-id")
+        self.assertTrue(pdf.startswith(b"%PDF"))
+        self.assertEqual(drive.files_api.calls[0]["fileId"], "template")
+        self.assertEqual(drive.files_api.calls[-1]["fileId"], copy_id)
+        self.assertEqual(docs.documents_api.calls[0]["documentId"], copy_id)
+        self.assertEqual(docs.documents_api.calls[0]["body"]["requests"][0]["replaceAllText"]["replaceText"], "TEST-BANK")

@@ -83,9 +83,9 @@ export function createFieldReviewController({ loadFields, preview }) {
   };
 }
 
-export async function requestGeneration(values, { fetchImpl = globalThis.fetch, urlImpl = globalThis.URL, documentImpl = globalThis.document } = {}) {
+export async function requestGeneration(values, { fetchImpl = globalThis.fetch, urlImpl = globalThis.URL, documentImpl = globalThis.document, templateToken } = {}) {
   const response = await fetchImpl(`${apiOrigin()}/api/invoices/generate`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values),
+    method: "POST", headers: { "Content-Type": "application/json", ...(templateToken ? { "X-Template-Selection": templateToken } : {}) }, body: JSON.stringify(values),
   });
   const contentType = (response.headers?.get?.("content-type") || "").split(";", 1)[0].toLowerCase();
   if (!response.ok || contentType !== "application/pdf") {
