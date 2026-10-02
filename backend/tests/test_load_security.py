@@ -1,5 +1,6 @@
 import json
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 
 from backend.app.config import CONFIG_TEMPLATE_ID, load_config
@@ -17,6 +18,18 @@ class BoundedSecurityRegressionTest(unittest.TestCase):
             status, payload = call(app, "/api/invoices/preview", method="POST", body=invoice_body(), content_type="application/json")
             self.assertEqual(status["status"], "200 OK")
             self.assertEqual(payload["calculation"]["total_amount"], "1200.00")
+
+    def test_concurrent_preview_requests_are_safe_and_isolated(self):
+        app = create_app(load_config(configured_values()).config, FixtureDocumentProvider())
+
+        def request(_index):
+            return call(app, "/api/invoices/preview", method="POST", body=invoice_body(), content_type="application/json")
+
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            results = list(executor.map(request, range(20)))
+
+        self.assertEqual([status["status"] for status, _ in results], ["200 OK"] * 20)
+        self.assertEqual({payload["calculation"]["total_amount"] for _, payload in results}, {"1200.00"})
 
     def test_generation_rate_limit_bounds_repeated_work(self):
         provider = FixtureDocumentProvider()
