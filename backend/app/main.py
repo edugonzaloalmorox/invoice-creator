@@ -12,6 +12,7 @@ from .config import AppConfig, ConfigLoad, load_config
 from .detection import detect_fields
 from .google_provider import GoogleDocumentProvider, google_document_id
 from .invoice import InvoiceInput, format_total, validate_invoice
+from .metrics import Metrics
 from .provider import FixtureDocumentProvider, ProviderError
 
 
@@ -109,9 +110,10 @@ def _validation_response(start_response: Callable, result, request_id: str) -> l
 class Application:
     """Small WSGI application with configuration captured at startup."""
 
-    def __init__(self, config_result: ConfigLoad, provider=None):
+    def __init__(self, config_result: ConfigLoad, provider=None, metrics: Metrics | None = None):
         self.config_result = config_result
         self.provider = provider or FixtureDocumentProvider()
+        self.metrics = metrics or Metrics()
         self._template_selections: dict[str, str] = {}
         self._generation_attempts: dict[str, list[float]] = {}
         self._generation_limit = 10
@@ -120,16 +122,24 @@ class Application:
     def __call__(self, environ: dict, start_response: Callable) -> list[bytes]:
         request_id = _request_id()
         path = environ.get("PATH_INFO", "")
+        started_at = time.monotonic()
+        original_start_response = start_response
+
+        def recording_start_response(status, headers):
+            self.metrics.record(path, status.split(" ", 1)[0][:1], (time.monotonic() - started_at) * 1000)
+            return original_start_response(status, headers)
+
+        start_response = recording_start_response
         request_origin = environ.get("HTTP_ORIGIN")
         configured_origin = self.config_result.config.frontend_origin if self.config_result.config else None
         if request_origin and configured_origin and request_origin != configured_origin:
             return _error_response(start_response, "403 Forbidden", "origin_forbidden", "Request origin is not allowed.", request_id)
         if request_origin and configured_origin == request_origin:
-            original_start_response = start_response
+            cors_original_start_response = start_response
 
             def cors_start_response(status, headers):
                 headers = list(headers) + [("Access-Control-Allow-Origin", request_origin), ("Vary", "Origin")]
-                original_start_response(status, headers)
+                cors_original_start_response(status, headers)
 
             start_response = cors_start_response
         if environ.get("REQUEST_METHOD") == "OPTIONS" and request_origin:
@@ -141,6 +151,10 @@ class Application:
             if environ.get("REQUEST_METHOD") != "POST":
                 return _json_response(start_response, "405 Method Not Allowed", {"error": {"code": "method_not_allowed", "message": "Only POST is supported.", "request_id": request_id}}, request_id)
             return self._connect_template(environ, start_response, request_id)
+        if path == "/api/metrics":
+            if environ.get("REQUEST_METHOD") != "GET":
+                return _json_response(start_response, "405 Method Not Allowed", {"error": {"code": "method_not_allowed", "message": "Only GET is supported.", "request_id": request_id}}, request_id)
+            return _json_response(start_response, "200 OK", self.metrics.snapshot(), request_id)
         if path == "/api/invoices/preview":
             if environ.get("REQUEST_METHOD") != "POST":
                 return _json_response(start_response, "405 Method Not Allowed", {"error": {"code": "method_not_allowed", "message": "Only POST is supported.", "request_id": request_id}}, request_id)

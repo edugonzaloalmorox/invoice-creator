@@ -84,6 +84,7 @@ arbitrary template.
 | --- | --- |
 | `GET /api/health` | Lightweight liveness check; does not require configuration |
 | `GET /api/ready` | Reports whether startup configuration is valid |
+| `GET /api/metrics` | Returns safe aggregate request/status/latency metrics |
 | `POST /api/template/connect` | Authenticates a Google Docs link and loads mapped fields |
 | `GET /api/template/fields` | Loads mapped fields for review |
 | `POST /api/invoices/preview` | Validates input and calculates the total without creating a document |

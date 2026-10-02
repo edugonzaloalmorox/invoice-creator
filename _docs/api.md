@@ -109,6 +109,13 @@ it never sends a document ID directly. Malformed or non-Google links return
 files, and provider failures return safe classified errors without document
 contents or provider payloads.
 
+### `GET /api/metrics`
+
+Returns aggregate request counts by bounded endpoint and status class, plus total
+request duration by endpoint. It never includes request bodies, query values,
+credentials, document IDs, bank details, or PDF content. Platform monitoring may
+scrape this endpoint or replace it with an authenticated metrics exporter.
+
 ### `GET /api/template/fields`
 
 Loads the configured template and returns the fields detected for user review. The

@@ -104,3 +104,15 @@ class ConfigurationTest(unittest.TestCase):
         self.assertTrue(status["headers"]["X-Request-ID"].startswith("req_"))
         self.assertEqual(status["headers"]["Cache-Control"], "no-store")
         self.assertEqual(payload, {"status": "ok"})
+
+    def test_metrics_expose_only_aggregate_request_data(self):
+        app = create_app(load_config(configured_values()).config)
+        call(app, "/api/health")
+        call(app, "/api/unknown")
+        status, payload = call(app, "/api/metrics")
+
+        self.assertEqual(status["status"], "200 OK")
+        self.assertGreaterEqual(payload["requests_by_path_and_status"]["/api/health"]["2"], 1)
+        self.assertGreaterEqual(payload["requests_by_path_and_status"]["other"]["4"], 1)
+        self.assertNotIn("request_body", json.dumps(payload))
+        self.assertNotIn("credential", json.dumps(payload).lower())
