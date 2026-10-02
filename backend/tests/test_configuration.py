@@ -114,5 +114,6 @@ class ConfigurationTest(unittest.TestCase):
         self.assertEqual(status["status"], "200 OK")
         self.assertGreaterEqual(payload["requests_by_path_and_status"]["/api/health"]["2"], 1)
         self.assertGreaterEqual(payload["requests_by_path_and_status"]["other"]["4"], 1)
+        self.assertEqual(payload["operational_events"], {"cleanup_failure": 0, "provider_failure": 0, "rate_limited": 0})
         self.assertNotIn("request_body", json.dumps(payload))
         self.assertNotIn("credential", json.dumps(payload).lower())

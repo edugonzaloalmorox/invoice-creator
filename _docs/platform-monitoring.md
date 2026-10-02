@@ -25,11 +25,12 @@ Track endpoint, status class, latency, readiness, provider operation class, clea
 success/failure, rate-limit count, and suspicious request volume. Suggested initial
 alerts:
 
-The backend exposes safe aggregate request/status/latency data at `GET /api/metrics`.
-It is suitable for a disposable/local scrape; production must place it behind the
-approved monitoring path or replace it with an authenticated exporter. Provider,
-cleanup, and suspicious-volume metrics should be derived from sanitized service
-telemetry rather than request bodies or document content.
+The backend exposes safe aggregate request/status/latency data and bounded provider,
+cleanup, and rate-limit event counters at `GET /api/metrics`. It is suitable for a
+disposable/local scrape; production must place it behind the approved monitoring
+path or replace it with an authenticated exporter. Suspicious-volume alerts should
+use aggregate rate-limit and request counters rather than request bodies, client
+identifiers, or document content.
 
 - Availability: `/api/health` below 99.5% over 5 minutes.
 - Readiness: any sustained `503` for 5 minutes or 3 consecutive failed probes.

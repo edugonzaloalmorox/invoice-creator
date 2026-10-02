@@ -163,6 +163,7 @@ class Application:
             if environ.get("REQUEST_METHOD") != "POST":
                 return _json_response(start_response, "405 Method Not Allowed", {"error": {"code": "method_not_allowed", "message": "Only POST is supported.", "request_id": request_id}}, request_id)
             if not self._allow_generation(environ):
+                self.metrics.record_event("rate_limited")
                 return _error_response(start_response, "429 Too Many Requests", "rate_limited", "Generation limit exceeded. Try again later.", request_id)
             return self._generate(environ, start_response, request_id)
 
@@ -292,11 +293,13 @@ class Application:
                 raise ProviderError("export_pdf", "response_too_large")
         except ProviderError as error:
             primary_error = error
+            self.metrics.record_event("provider_failure")
         finally:
             if document_id is not None:
                 try:
                     self.provider.delete_document(document_id)
                 except ProviderError as cleanup_error:
+                    self.metrics.record_event("cleanup_failure")
                     if primary_error is None:
                         primary_error = cleanup_error
         if primary_error is not None:

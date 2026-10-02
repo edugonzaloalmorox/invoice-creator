@@ -40,6 +40,9 @@ class BoundedSecurityRegressionTest(unittest.TestCase):
         self.assertEqual(statuses[-1], "429 Too Many Requests")
         self.assertEqual(statuses.count("200 OK"), 10)
         self.assertEqual(len([call for call in provider.calls if call[0] == "copy_document"]), 10)
+        metrics_status, metrics = call(app, "/api/metrics")
+        self.assertEqual(metrics_status["status"], "200 OK")
+        self.assertEqual(metrics["operational_events"]["rate_limited"], 1)
 
     def test_repeated_malformed_requests_never_echo_sensitive_values(self):
         app = create_app(load_config(configured_values()).config, FixtureDocumentProvider())
@@ -61,6 +64,22 @@ class BoundedSecurityRegressionTest(unittest.TestCase):
         self.assertEqual(statuses, ["504 Gateway Timeout"] * 10)
         self.assertEqual(len([entry for entry in provider.calls if entry[0] == "copy_document"]), 10)
         self.assertEqual(len([entry for entry in provider.calls if entry[0] == "delete_document"]), 10)
+        metrics_status, metrics = call(app, "/api/metrics")
+        self.assertEqual(metrics_status["status"], "200 OK")
+        self.assertEqual(metrics["operational_events"]["provider_failure"], 10)
+
+    def test_cleanup_failures_are_visible_without_document_identifiers(self):
+        provider = FixtureDocumentProvider(failures={"delete_document": "cleanup_failed"})
+        values = configured_values()
+        values[CONFIG_TEMPLATE_ID] = "fixture-template"
+        app = create_app(load_config(values).config, provider)
+
+        status, _ = call_raw(app, invoice_body())
+        self.assertEqual(status["status"], "502 Bad Gateway")
+        metrics_status, metrics = call(app, "/api/metrics")
+        self.assertEqual(metrics_status["status"], "200 OK")
+        self.assertEqual(metrics["operational_events"]["cleanup_failure"], 1)
+        self.assertNotIn("fixture", json.dumps(metrics).lower())
 
     def test_malformed_payload_does_not_echo_sensitive_data(self):
         app = create_app(load_config(configured_values()).config)

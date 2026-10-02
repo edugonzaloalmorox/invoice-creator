@@ -111,10 +111,12 @@ contents or provider payloads.
 
 ### `GET /api/metrics`
 
-Returns aggregate request counts by bounded endpoint and status class, plus total
-request duration by endpoint. It never includes request bodies, query values,
-credentials, document IDs, bank details, or PDF content. Platform monitoring may
-scrape this endpoint or replace it with an authenticated metrics exporter.
+Returns aggregate request counts by bounded endpoint and status class, total request
+duration by endpoint, and bounded operational event counters for provider failures,
+cleanup failures, and rate limiting. It never includes request bodies, query values,
+credentials, document IDs, bank details, client identifiers, or PDF content. Platform
+monitoring may scrape this endpoint or replace it with an authenticated metrics
+exporter.
 
 ### `GET /api/template/fields`
 
