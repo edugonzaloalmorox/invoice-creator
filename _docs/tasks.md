@@ -10,11 +10,11 @@ When done, a new contributor can install the existing toolchain, run documented 
 
 ## Acceptance criteria
 
-- [ ] Separate `backend` and `frontend` application/test locations exist with importable entry points.
-- [ ] Backend and frontend smoke tests pass using the exact commands documented in `README.md`.
-- [ ] A fresh checkout runs both commands without Google credentials, environment variables, or network access.
-- [ ] README documents supported runtimes and exact install/test commands.
-- [ ] No Google client, invoice calculation, HTTP endpoint, persistence, or document-generation behavior is included.
+- [x] Separate `backend` and `frontend` application/test locations exist with importable entry points.
+- [x] Backend and frontend smoke tests pass using the exact commands documented in `README.md`.
+- [x] A fresh checkout runs both commands without Google credentials, environment variables, or network access.
+- [x] README documents supported runtimes and exact install/test commands.
+- [x] No Google client, invoice calculation, HTTP endpoint, persistence, or document-generation behavior is included.
 
 ## Out of scope
 
@@ -35,12 +35,12 @@ When done, the application has typed non-secret configuration and health/readine
 
 ## Acceptance criteria
 
-- [ ] Configuration covers environment name, frontend origin, Google credential reference, template ID, request/body limits, and provider timeouts.
-- [ ] Missing/invalid required configuration produces a safe readiness/startup error without secret values.
-- [ ] Health succeeds when the process is alive and does not require Google access.
-- [ ] Readiness is not-ready for absent/unusable configuration and ready only after validation succeeds.
-- [ ] Health/readiness status codes and JSON shapes are documented and tested.
-- [ ] Required variables and placeholders are documented; tests prove secrets are absent from responses/errors.
+- [x] Configuration covers environment name, frontend origin, Google credential reference, template ID, request/body limits, and provider timeouts.
+- [x] Missing/invalid required configuration produces a safe readiness/startup error without secret values.
+- [x] Health succeeds when the process is alive and does not require Google access.
+- [x] Readiness is not-ready for absent/unusable configuration and ready only after validation succeeds.
+- [x] Health/readiness status codes and JSON shapes are documented and tested.
+- [x] Required variables and placeholders are documented; tests prove secrets are absent from responses/errors.
 
 ## Out of scope
 
@@ -61,13 +61,13 @@ When done, the backend validates invoice input and calculates an authoritative t
 
 ## Acceptance criteria
 
-- [ ] Schemas cover dates, workdays, daily pay, currency, bank name, account holder, IBAN/account number, and SWIFT/BIC with requiredness documented.
-- [ ] Malformed dates and end-before-start are rejected; valid dates use one normalized format.
-- [ ] Workdays/pay reject missing, negative, non-numeric, over-limit, and excess-precision values as applicable.
-- [ ] Currency accepts only the supported code and normalizes case.
-- [ ] Bank fields enforce requiredness, length, and documented format rules without storing input.
-- [ ] Total equals `days_worked * pay_per_day` using decimal arithmetic and documented currency rounding.
-- [ ] Boundary tests cover zero/maximum values, date boundaries, precision, and field-level errors without echoing bank data.
+- [x] Schemas cover dates, workdays, daily pay, currency, bank name, account holder, IBAN/account number, and SWIFT/BIC with requiredness documented.
+- [x] Malformed dates and end-before-start are rejected; valid dates use one normalized format.
+- [x] Workdays/pay reject missing, negative, non-numeric, over-limit, and excess-precision values as applicable.
+- [x] Currency accepts only the supported code and normalizes case.
+- [x] Bank fields enforce requiredness, length, and documented format rules without storing input.
+- [x] Total equals `days_worked * pay_per_day` using decimal arithmetic and documented currency rounding.
+- [x] Boundary tests cover zero/maximum values, date boundaries, precision, and field-level errors without echoing bank data.
 
 ## Out of scope
 
@@ -88,12 +88,12 @@ When done, `POST /api/invoices/preview` validates an invoice and returns normali
 
 ## Acceptance criteria
 
-- [ ] Valid input returns the documented success status with normalized values and calculated total.
-- [ ] Invalid JSON, missing body, wrong content type, and field validation errors return the documented field-level error shape.
-- [ ] Invalid input never returns a successful-looking total.
-- [ ] Boundary values accepted by #TASK-3 produce the same values/total through this endpoint.
-- [ ] The endpoint performs no Google calls, writes, persistence, or temporary-file creation.
-- [ ] Tests prove invoice/bank data is absent from logs, exceptions, and request identifiers.
+- [x] Valid input returns the documented success status with normalized values and calculated total.
+- [x] Invalid JSON, missing body, wrong content type, and field validation errors return the documented field-level error shape.
+- [x] Invalid input never returns a successful-looking total.
+- [x] Boundary values accepted by #TASK-3 produce the same values/total through this endpoint.
+- [x] The endpoint performs no Google calls, writes, persistence, or temporary-file creation.
+- [x] Tests prove invoice/bank data is absent from logs, exceptions, and request identifiers.
 
 ## Out of scope
 
@@ -113,13 +113,13 @@ When done, an unauthenticated user can enter all invoice details, request a prev
 
 ## Acceptance criteria
 
-- [ ] Labeled controls exist for dates, workdays, daily pay, currency, bank name, account holder, IBAN/account number, and SWIFT/BIC; required fields are visible.
-- [ ] Keyboard users can reach controls, understand errors without color alone, and submit accessibly.
-- [ ] Valid submission calls preview and displays server-normalized values and total.
-- [ ] Invalid submission shows field-level errors and preserves every entered value.
-- [ ] Pending preview communicates loading and prevents duplicate requests.
-- [ ] Generation remains unavailable until required input has valid preview state.
-- [ ] Bank details never appear in URL, analytics payload, or debug output.
+- [x] Labeled controls exist for dates, workdays, daily pay, currency, bank name, account holder, IBAN/account number, and SWIFT/BIC; required fields are visible.
+- [x] Keyboard users can reach controls, understand errors without color alone, and submit accessibly.
+- [x] Valid submission calls preview and displays server-normalized values and total.
+- [x] Invalid submission shows field-level errors and preserves every entered value.
+- [x] Pending preview communicates loading and prevents duplicate requests.
+- [x] Generation remains unavailable until required input has valid preview state.
+- [x] Bank details never appear in URL, analytics payload, or debug output.
 
 ## Out of scope
 
@@ -139,12 +139,12 @@ When done, generation code uses an interface for reading, copying, replacing, ex
 
 ## Acceptance criteria
 
-- [ ] The interface defines template read, copy, replacement, PDF export, and delete/trash operations.
-- [ ] Inputs, outputs, timeout/error behavior, and cleanup expectations are documented.
-- [ ] The fixture provider returns deterministic content and records call order.
-- [ ] Tests cover success, missing fields, duplicates, provider errors, and cleanup calls.
-- [ ] Fixtures contain no real bank, invoice, credential, or identifying data.
-- [ ] Provider errors are safely classified without exposing provider payloads.
+- [x] The interface defines template read, copy, replacement, PDF export, and delete/trash operations.
+- [x] Inputs, outputs, timeout/error behavior, and cleanup expectations are documented.
+- [x] The fixture provider returns deterministic content and records call order.
+- [x] Tests cover success, missing fields, duplicates, provider errors, and cleanup calls.
+- [x] Fixtures contain no real bank, invoice, credential, or identifying data.
+- [x] Provider errors are safely classified without exposing provider payloads.
 
 ## Out of scope
 
@@ -164,12 +164,12 @@ When done, the supported invoice template has a sanitized, versioned field map i
 
 ## Acceptance criteria
 
-- [ ] A disposable/test copy is inspected, including body, table, header, footer, and split-run structures.
-- [ ] Every field has stable name, label, location, format, type, and required/optional status.
-- [ ] Matching rules and duplicate/ambiguous conditions are recorded.
-- [ ] Sanitized fixtures reproduce every supported structure without real data.
-- [ ] Template ID/version prevents silent use of an obsolete map.
-- [ ] The map and fixtures are consumable by detection and replacement tests.
+- [x] A disposable/test copy is inspected, including body, table, header, footer, and split-run structures.
+- [x] Every field has stable name, label, location, format, type, and required/optional status.
+- [x] Matching rules and duplicate/ambiguous conditions are recorded.
+- [x] Sanitized fixtures reproduce every supported structure without real data.
+- [x] Template ID/version prevents silent use of an obsolete map.
+- [x] The map and fixtures are consumable by detection and replacement tests.
 
 ## Out of scope
 
@@ -214,12 +214,12 @@ When done, `GET /api/template/fields` returns stable reviewable fields and expli
 
 ## Acceptance criteria
 
-- [ ] Success includes stable name, type, value, source location, required/calculated status, confidence, and warnings.
-- [ ] Detection follows the field map and only documented required synonyms.
-- [ ] Missing required fields are marked incomplete; duplicates include all candidates and are ambiguous.
-- [ ] Already-filled values are surfaced with the documented state/warning.
-- [ ] Stale, unreadable, and unsupported structures yield safe errors/warnings, never fabricated values.
-- [ ] The endpoint does not mutate the template; tests prove this.
+- [x] Success includes stable name, type, value, source location, required/calculated status, confidence, and warnings.
+- [x] Detection follows the field map and only documented required synonyms.
+- [x] Missing required fields are marked incomplete; duplicates include all candidates and are ambiguous.
+- [x] Already-filled values are surfaced with the documented state/warning.
+- [x] Stale, unreadable, and unsupported structures yield safe errors/warnings, never fabricated values.
+- [x] The endpoint does not mutate the template; tests prove this.
 
 ## Out of scope
 
@@ -239,12 +239,12 @@ When done, users can inspect detected values, resolve/correct allowed fields, un
 
 ## Acceptance criteria
 
-- [ ] Every field from #TASK-9 displays label, value, type, source/state, and requiredness.
-- [ ] Low-confidence, ambiguous, and missing-required fields have visible text warnings and block unresolved confirmation.
-- [ ] User edits survive validation, preview, and retry failures.
-- [ ] Detected, user-edited, and calculated values are visually/state-wise distinct.
-- [ ] Confirmation shows the submission and enables generation only when required fields and preview are valid.
-- [ ] Loading, empty, backend-error, and retry states are accessible and preserve edits.
+- [x] Every field from #TASK-9 displays label, value, type, source/state, and requiredness.
+- [x] Low-confidence, ambiguous, and missing-required fields have visible text warnings and block unresolved confirmation.
+- [x] User edits survive validation, preview, and retry failures.
+- [x] Detected, user-edited, and calculated values are visually/state-wise distinct.
+- [x] Confirmation shows the submission and enables generation only when required fields and preview are valid.
+- [x] Loading, empty, backend-error, and retry states are accessible and preserve edits.
 
 ## Out of scope
 
@@ -264,12 +264,12 @@ When done, confirmed values are applied only to a unique isolated copy, includin
 
 ## Acceptance criteria
 
-- [ ] Each generation creates a unique short-lived copy whose name contains no sensitive input.
-- [ ] Replacements work for mapped body, table, header, footer, and split-run fixtures.
-- [ ] Only mapped fields change; unrelated content, structure, and formatting match the fixture comparison.
-- [ ] Missing, duplicate, stale, and ambiguous fields fail safely and are classified.
-- [ ] Tests prove the master is unchanged and record the temporary document ID.
-- [ ] Cleanup is requested after successful and failed replacement paths; cleanup failure is available to orchestration.
+- [x] Each generation creates a unique short-lived copy whose name contains no sensitive input.
+- [x] Replacements work for mapped body, table, header, footer, and split-run fixtures.
+- [x] Only mapped fields change; unrelated content, structure, and formatting match the fixture comparison.
+- [x] Missing, duplicate, stale, and ambiguous fields fail safely and are classified.
+- [x] Tests prove the master is unchanged and record the temporary document ID.
+- [x] Cleanup is requested after successful and failed replacement paths; cleanup failure is available to orchestration.
 
 ## Out of scope
 
@@ -289,12 +289,12 @@ When done, `POST /api/invoices/generate` validates/recalculates, creates and upd
 
 ## Acceptance criteria
 
-- [ ] Valid input recalculates server-side, copies the template, replaces values, exports a non-empty PDF, and deletes/trashes the temporary copy.
-- [ ] Response is `application/pdf` with safe date-based filename, request ID, and `Cache-Control: no-store`.
-- [ ] Invalid or stale confirmation data fails before mutation with safe field/classified errors.
-- [ ] Copy, replacement, export, timeout, empty/corrupt PDF, and cleanup failures have documented safe responses and bounded work.
-- [ ] Cleanup is attempted after every created copy; cleanup failure is observable without hiding the primary failure.
-- [ ] Tests prove the master is unchanged and no invoice data persists.
+- [x] Valid input recalculates server-side, copies the template, replaces values, exports a non-empty PDF, and deletes/trashes the temporary copy.
+- [x] Response is `application/pdf` with safe date-based filename, request ID, and `Cache-Control: no-store`.
+- [x] Invalid or stale confirmation data fails before mutation with safe field/classified errors.
+- [x] Copy, replacement, export, timeout, empty/corrupt PDF, and cleanup failures have documented safe responses and bounded work.
+- [x] Cleanup is attempted after every created copy; cleanup failure is observable without hiding the primary failure.
+- [x] Tests prove the master is unchanged and no invoice data persists.
 
 ## Out of scope
 
@@ -314,12 +314,12 @@ When done, a user can submit a confirmed review, download only a successful PDF,
 
 ## Acceptance criteria
 
-- [ ] Generate is disabled until confirmation and valid preview requirements are met.
-- [ ] Submission shows loading, prevents duplicates, and restores an actionable state.
-- [ ] Download starts only for successful `application/pdf` and uses the safe server filename.
-- [ ] Non-PDF, error, timeout, and network responses show clear failure and do not download.
-- [ ] Retryable failures preserve all form/review values and valid preview state.
-- [ ] No bank data appears in URLs, logs, or analytics.
+- [x] Generate is disabled until confirmation and valid preview requirements are met.
+- [x] Submission shows loading, prevents duplicates, and restores an actionable state.
+- [x] Download starts only for successful `application/pdf` and uses the safe server filename.
+- [x] Non-PDF, error, timeout, and network responses show clear failure and do not download.
+- [x] Retryable failures preserve all form/review values and valid preview state.
+- [x] No bank data appears in URLs, logs, or analytics.
 
 ## Out of scope
 
@@ -339,13 +339,13 @@ When done, production-like requests have restrictive transport/origin/body contr
 
 ## Acceptance criteria
 
-- [ ] Production configuration documents HTTPS and rejects or prevents insecure deployment assumptions.
-- [ ] CORS allows only configured origins and is not wildcarded in production.
-- [ ] Oversized requests are rejected before expensive provider work.
-- [ ] Generation has rate limiting or equivalent bounded abuse control with documented tests.
-- [ ] Logs redact bank details, credentials, document/PDF contents, and sensitive fields.
-- [ ] Bank details never appear in URLs, analytics, request IDs, exceptions, provider errors, temporary names, or headers.
-- [ ] PDF responses are non-cacheable and failed requests leave no accessible artifacts.
+- [x] Production configuration documents HTTPS and rejects or prevents insecure deployment assumptions.
+- [x] CORS allows only configured origins and is not wildcarded in production.
+- [x] Oversized requests are rejected before expensive provider work.
+- [x] Generation has rate limiting or equivalent bounded abuse control with documented tests.
+- [x] Logs redact bank details, credentials, document/PDF contents, and sensitive fields.
+- [x] Bank details never appear in URLs, analytics, request IDs, exceptions, provider errors, temporary names, or headers.
+- [x] PDF responses are non-cacheable and failed requests leave no accessible artifacts.
 
 ## Out of scope
 
@@ -365,12 +365,12 @@ When done, automated tests prove the complete credential-free MVP workflow and f
 
 ## Acceptance criteria
 
-- [ ] An integration test covers detection, review payload, calculation, copy, replacement, PDF export, response, and cleanup.
-- [ ] Tests cover invalid input, low-confidence/ambiguous detection, timeout, empty/corrupt export, retryable failure, and cleanup failure.
-- [ ] Tests prove the original fixture/document is unchanged after success and every failure.
-- [ ] Tests verify duplicate submissions do not duplicate work where promised.
-- [ ] Tests verify sensitive data is absent from logs, URLs, IDs, temporary names, and errors.
-- [ ] Documented backend/frontend test commands run the relevant suite from a clean checkout.
+- [x] An integration test covers detection, review payload, calculation, copy, replacement, PDF export, response, and cleanup.
+- [x] Tests cover invalid input, low-confidence/ambiguous detection, timeout, empty/corrupt export, retryable failure, and cleanup failure.
+- [x] Tests prove the original fixture/document is unchanged after success and every failure.
+- [x] Tests verify duplicate submissions do not duplicate work where promised.
+- [x] Tests verify sensitive data is absent from logs, URLs, IDs, temporary names, and errors.
+- [x] Documented backend/frontend test commands run the relevant suite from a clean checkout.
 
 ## Out of scope
 
@@ -390,12 +390,12 @@ When done, another engineer can build, configure, deploy, operate, and troublesh
 
 ## Acceptance criteria
 
-- [ ] Exact backend/frontend build, test, start commands and deployment topology are documented.
-- [ ] All environment variables, defaults/required status, origins, limits, and secret-handling rules are documented.
-- [ ] Google APIs/scopes, service-account sharing, template ID/version, and cleanup permissions are documented.
-- [ ] Runbook covers credential failures, template changes, provider outages, orphaned temporary documents, and sensitive-data incidents.
-- [ ] Runbook identifies safe logs/metrics, health/readiness behavior, rollback/disable steps, and ownership/escalation.
-- [ ] Docs contain placeholders/examples only, with no real credentials, bank data, invoice data, or production IDs.
+- [x] Exact backend/frontend build, test, start commands and deployment topology are documented.
+- [x] All environment variables, defaults/required status, origins, limits, and secret-handling rules are documented.
+- [x] Google APIs/scopes, service-account sharing, template ID/version, and cleanup permissions are documented.
+- [x] Runbook covers credential failures, template changes, provider outages, orphaned temporary documents, and sensitive-data incidents.
+- [x] Runbook identifies safe logs/metrics, health/readiness behavior, rollback/disable steps, and ownership/escalation.
+- [x] Docs contain placeholders/examples only, with no real credentials, bank data, invoice data, or production IDs.
 
 ## Out of scope
 
