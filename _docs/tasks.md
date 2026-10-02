@@ -524,3 +524,58 @@ When done, the deployed service has owned platform resources, actionable monitor
 ## Constraints
 
 - Use least-privilege platform access, bounded retention, and sanitized operational data; do not block MVP acceptance on this follow-up.
+
+## 22. Connect a Google Docs template from the frontend
+
+## Goal
+
+When done, a user can paste a Google Docs template link into the app, authenticate
+access through the backend, and use the successfully read template in the existing
+invoice review and fill flow.
+
+## Acceptance criteria
+
+- [ ] The initial template screen shows a clearly labeled input with text such as
+  “Where is your template?” and a primary action to load the template.
+- [ ] The input accepts a Google Docs document URL, preserves the user’s value on
+  validation or network failure, and does not place the URL in the browser URL,
+  analytics payload, logs, or request IDs.
+- [ ] Submitting the link shows an accessible loading state and prevents duplicate
+  submissions until the request completes.
+- [ ] The frontend sends the link over the existing authenticated backend channel;
+  the backend extracts and validates the Google document ID and uses the configured
+  service-account credentials to verify access without exposing credentials.
+- [ ] Links from unsupported hosts, malformed URLs, trashed documents, non-Google
+  files, inaccessible documents, and provider failures return safe, actionable
+  errors without leaking document contents or provider payloads.
+- [ ] A successful response contains only the sanitized template identity, field-map
+  version, and reviewable field metadata needed by the existing review UI; raw
+  document content and credentials are never returned.
+- [ ] After successful loading, the selected template is used by preview and
+  generation, and the user can fill the mapped fields and download the resulting
+  PDF through the existing flow.
+- [ ] Retry and back-navigation preserve the entered link and any user-edited invoice
+  values without creating duplicate provider work.
+- [ ] Tests cover valid links, invalid links, access denial, provider failure,
+  duplicate submission, sensitive-value redaction, and successful handoff to the
+  existing fill/generation flow using a disposable or mocked document.
+
+## Out of scope
+
+- User accounts, OAuth consent screens, session management, or per-user authorization,
+  covered by #TASK-18.
+- Arbitrary web URLs, Google Drive folder browsing, multiple-template persistence,
+  and template administration; these require a separately groomed follow-up.
+- Changes to Google document copying, replacement, export, or cleanup semantics,
+  covered by #TASK-11 and #TASK-12.
+
+## Constraints
+
+- Keep credentials and Google API calls in the backend; the browser must never
+  receive service-account material or raw document content.
+- Reuse the existing Google provider, field map, review state, and generation API;
+  do not duplicate template parsing or invoice calculation in the frontend.
+- Use the existing frontend styles and accessibility patterns; no
+  `_docs/design-system.md` is currently present, so document any new visual
+  decisions in the task implementation.
+- Use sanitized/disposable fixtures and follow `_docs/testing-guidelines.md`.
