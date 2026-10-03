@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { appName, createInvoiceFormController, invoiceFields, renderTemplateConnection, requestLogout, requestPreview, requestSession, requestTemplate } from "../src/app.js";
+import { apiOrigin, appName, createInvoiceFormController, invoiceFields, renderTemplateConnection, requestLogout, requestPreview, requestSession, requestTemplate } from "../src/app.js";
 import { createFieldReviewController, requestGeneration } from "../src/review.js";
 
 test("frontend scaffold is importable", () => {
@@ -74,6 +74,14 @@ test("session and logout requests carry browser credentials", async () => {
   assert.equal(await requestLogout({ fetchImpl: async (_url, options) => { logoutRequest = options; return { ok: true }; } }), true);
   assert.equal(logoutRequest.method, "POST");
   assert.equal(logoutRequest.credentials, "include");
+});
+
+test("API origin follows the page hostname so auth cookies stay same-site", () => {
+  const previousLocation = globalThis.location;
+  globalThis.location = { protocol: "http:", hostname: "127.0.0.1" };
+  assert.equal(apiOrigin(), "http://127.0.0.1:8000");
+  if (previousLocation === undefined) delete globalThis.location;
+  else globalThis.location = previousLocation;
 });
 
 test("preview and generation requests carry the opaque template selection", async () => {

@@ -122,7 +122,10 @@ export async function requestPreview(values, { fetchImpl = globalThis.fetch, tem
 }
 
 export function apiOrigin() {
-  return globalThis.INVOICE_API_ORIGIN || "http://localhost:8000";
+  if (globalThis.INVOICE_API_ORIGIN) return globalThis.INVOICE_API_ORIGIN;
+  const pageLocation = globalThis.location;
+  if (pageLocation?.hostname) return `${pageLocation.protocol || "http:"}//${pageLocation.hostname}:8000`;
+  return "http://localhost:8000";
 }
 
 function escapeHtml(value) {

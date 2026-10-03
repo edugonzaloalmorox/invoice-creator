@@ -1,7 +1,10 @@
 const BLOCKING_WARNINGS = new Set(["missing_field", "ambiguous_field", "low_confidence"]);
 
 function apiOrigin() {
-  return globalThis.INVOICE_API_ORIGIN || "http://localhost:8000";
+  if (globalThis.INVOICE_API_ORIGIN) return globalThis.INVOICE_API_ORIGIN;
+  const pageLocation = globalThis.location;
+  if (pageLocation?.hostname) return `${pageLocation.protocol || "http:"}//${pageLocation.hostname}:8000`;
+  return "http://localhost:8000";
 }
 
 export function createFieldReviewController({ loadFields, preview }) {
