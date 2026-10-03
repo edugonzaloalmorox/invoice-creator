@@ -10,9 +10,10 @@ The application currently supports one configured template, does not persist
 invoice data, and is not a production deployment.
 
 Optional Google user sign-in is enabled when all OAuth variables are configured.
-The configured scopes must include `openid`; the current local OAuth settings use
-only `drive.file`, so they can open Google consent but cannot yet establish a
-user session until the scope is updated and consent is granted again.
+The configured scopes must include `openid` and the Docs read scope. The pasted
+link flow reads arbitrary documents the signed-in user can access, while
+`drive.file` is retained for temporary copies created by the app. Changing scopes
+requires signing in again and granting consent.
 
 ## Quick start
 

@@ -29,7 +29,10 @@ The sign-in request uses:
 
 - `openid` to establish the stable Google subject used as the internal user key;
 - `email` and optionally `profile` for the account indicator shown in the UI;
-- `https://www.googleapis.com/auth/drive.file` for per-file Drive access.
+- `https://www.googleapis.com/auth/documents` to read an arbitrary pasted Google
+  Docs link that the signed-in user can access;
+- `https://www.googleapis.com/auth/drive.file` for temporary copies created by
+  the app.
 
 The backend exchanges the authorization code and keeps access/refresh tokens on
 the server. The browser receives only the session cookie. `drive.file` is a

@@ -120,6 +120,30 @@ class GoogleProviderTest(unittest.TestCase):
         self.assertTrue(snapshot.fields["swift_or_bic"])
         self.assertEqual(snapshot.values, {})
 
+    def test_normalizes_nested_document_tabs(self):
+        document = {
+            "title": "Tabbed invoice",
+            "tabs": [{
+                "tabProperties": {"tabId": "t.0"},
+                "documentTab": {
+                    "body": {"content": [{"paragraph": {"elements": [{"textRun": {"content": "{{days_worked}}"}}]}}]},
+                    "headers": {},
+                    "footers": {},
+                },
+                "childTabs": [{
+                    "tabProperties": {"tabId": "t.1"},
+                    "documentTab": {
+                        "body": {"content": [{"paragraph": {"elements": [{"textRun": {"content": "{{bank_name}}"}}]}}]},
+                    },
+                }],
+            }],
+        }
+
+        snapshot = normalize_google_document(document, document_id="tabbed-template")
+
+        self.assertTrue(snapshot.fields["days_worked"])
+        self.assertTrue(snapshot.fields["bank_name"])
+
     def test_read_only_provider_reads_metadata_and_document_without_writes(self):
         drive = FakeDrive({"id": "real-template-id", "name": "Invoice", "mimeType": GOOGLE_DOC_MIME_TYPE, "version": "7"})
         docs = FakeDocs(google_document())
@@ -131,6 +155,7 @@ class GoogleProviderTest(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(len(drive.files_api.calls), 2)
         self.assertEqual(len(docs.documents_api.calls), 2)
+        self.assertTrue(all(call["includeTabsContent"] for call in docs.documents_api.calls))
         self.assertEqual(drive.writes, [])
         self.assertEqual(docs.documents_api.writes, [])
 
@@ -192,3 +217,19 @@ class GoogleProviderTest(unittest.TestCase):
         self.assertEqual(provider.credential_reference, "oauth://signed-in-user")
         self.assertEqual(provider._credentials.token, "synthetic-access")
         self.assertEqual(provider._credentials.refresh_token, "synthetic-refresh")
+
+    def test_user_session_reads_a_pasted_document_without_drive_file_metadata_access(self):
+        drive = FakeDrive({})
+        docs = FakeDocs(google_document())
+        provider = GoogleDocumentProvider(
+            "oauth://signed-in-user",
+            drive_service=drive,
+            docs_service=docs,
+            credentials=object(),
+        )
+
+        snapshot = provider.read_template("pasted-document-id")
+
+        self.assertTrue(snapshot.fields["days_worked"])
+        self.assertEqual(drive.files_api.calls, [])
+        self.assertEqual(docs.documents_api.calls[0]["documentId"], "pasted-document-id")

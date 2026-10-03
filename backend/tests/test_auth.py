@@ -206,8 +206,9 @@ class AuthBoundaryTest(unittest.TestCase):
         self.assertNotIn("authorized-template-id", json.dumps(payload))
         self.assertNotIn("{{days_worked}}", json.dumps(payload))
         self.assertEqual(factory.call_args.kwargs["access_token"], "synthetic-access")
-        drive.files.return_value.get.assert_called_once_with(
-            fileId="authorized-template-id", fields="id,name,mimeType,trashed,version", supportsAllDrives=True
+        drive.files.return_value.get.assert_not_called()
+        docs.documents.return_value.get.assert_called_once_with(
+            documentId="authorized-template-id", includeTabsContent=True
         )
 
     def test_denied_consent_explains_test_user_configuration_without_echoing_provider_data(self):

@@ -113,19 +113,37 @@ def _walk_content(content: list[Mapping[str, Any]], section: str, prefix: str):
                     yield from _walk_content(cell.get("content", []), section, cell_prefix)
 
 
+def _tab_sections(tabs: list[Mapping[str, Any]], prefix: str = ""):
+    """Yield body, header, and footer content from a tab tree."""
+
+    for index, tab in enumerate(tabs):
+        properties = tab.get("tabProperties", {})
+        tab_id = str(properties.get("tabId", index))
+        tab_prefix = f"{prefix}{tab_id}"
+        document_tab = tab.get("documentTab", {})
+        yield ("body", document_tab.get("body", {}).get("content", []), f"tab:{tab_prefix}:content")
+        for header_id, header in sorted(document_tab.get("headers", {}).items()):
+            yield ("header", header.get("content", []), f"tab:{tab_prefix}:{header_id}")
+        for footer_id, footer in sorted(document_tab.get("footers", {}).items()):
+            yield ("footer", footer.get("content", []), f"tab:{tab_prefix}:{footer_id}")
+        yield from _tab_sections(tab.get("childTabs", []), f"{tab_prefix}/")
+
+
 def normalize_google_document(document: Mapping[str, Any], *, document_id: str) -> DocumentSnapshot:
     """Convert a Google Docs resource into the provider's sanitized snapshot."""
 
     locations: dict[str, list[str]] = {name: [] for name in FIELD_MAP}
     values: dict[str, str] = {}
 
-    sections: list[tuple[str, list[Mapping[str, Any]], str]] = [
-        ("body", document.get("body", {}).get("content", []), "content"),
-    ]
-    for header_id, header in sorted(document.get("headers", {}).items()):
-        sections.append(("header", header.get("content", []), str(header_id)))
-    for footer_id, footer in sorted(document.get("footers", {}).items()):
-        sections.append(("footer", footer.get("content", []), str(footer_id)))
+    sections = list(_tab_sections(document.get("tabs", [])))
+    if not sections:
+        sections = [
+            ("body", document.get("body", {}).get("content", []), "content"),
+        ]
+        for header_id, header in sorted(document.get("headers", {}).items()):
+            sections.append(("header", header.get("content", []), str(header_id)))
+        for footer_id, footer in sorted(document.get("footers", {}).items()):
+            sections.append(("footer", footer.get("content", []), str(footer_id)))
 
     title = str(document.get("title", "configured-invoice-template"))
     for section, content, prefix in sections:
@@ -209,14 +227,20 @@ class GoogleDocumentProvider:
     def read_template(self, template_id: str) -> DocumentSnapshot:
         try:
             drive, docs = self._services()
-            metadata = (
-                drive.files()
-                .get(fileId=template_id, fields="id,name,mimeType,trashed,version", supportsAllDrives=True)
-                .execute(num_retries=0)
-            )
-            if metadata.get("trashed") or metadata.get("mimeType") != GOOGLE_DOC_MIME_TYPE:
-                raise ProviderError("read_template", "template_not_found")
-            document = docs.documents().get(documentId=template_id).execute(num_retries=0)
+            # ``drive.file`` only exposes files explicitly opened or created by
+            # the app. A pasted link can point at any Google Doc the signed-in
+            # user can read, so OAuth reads must go through Docs API with the
+            # documents scope. Keep the Drive metadata check for service
+            # accounts, where it also verifies the configured template type.
+            if self.credential_reference != "oauth://signed-in-user":
+                metadata = (
+                    drive.files()
+                    .get(fileId=template_id, fields="id,name,mimeType,trashed,version", supportsAllDrives=True)
+                    .execute(num_retries=0)
+                )
+                if metadata.get("trashed") or metadata.get("mimeType") != GOOGLE_DOC_MIME_TYPE:
+                    raise ProviderError("read_template", "template_not_found")
+            document = docs.documents().get(documentId=template_id, includeTabsContent=True).execute(num_retries=0)
             return normalize_google_document(document, document_id=template_id)
         except ProviderError:
             raise
