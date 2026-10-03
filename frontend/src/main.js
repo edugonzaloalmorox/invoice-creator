@@ -1,4 +1,4 @@
-import { renderInvoiceForm, renderTemplateConnection, requestLogout, requestPreview, requestSession, requestTemplate } from "./app.js";
+import { apiOrigin, renderInvoiceForm, renderTemplateConnection, requestLogout, requestPreview, requestSession, requestTemplate } from "./app.js";
 import { requestGeneration } from "./review.js";
 
 const root = document.querySelector("#app");
@@ -9,13 +9,13 @@ function renderApplicationError(message) {
 }
 
 function renderSignIn() {
-  root.innerHTML = '<section class="service-error" aria-labelledby="sign-in-title"><p class="eyebrow">Sign in required</p><h2 id="sign-in-title">Sign in with Google</h2><p>Sign in to connect a template and create an invoice.</p><a class="button button-primary" href="http://localhost:8000/auth/google">Continue with Google</a></section>';
+  root.innerHTML = `<section class="service-error" aria-labelledby="sign-in-title"><p class="eyebrow">Sign in required</p><h2 id="sign-in-title">Sign in with Google</h2><p>Sign in to connect a template and create an invoice.</p><a class="button button-primary" href="${apiOrigin()}/auth/google">Continue with Google</a></section>`;
 }
 
 async function start() {
   root.innerHTML = '<p class="loading" role="status">Connecting to the invoice service…</p>';
   try {
-    const response = await fetch("http://localhost:8000/api/health");
+    const response = await fetch(`${apiOrigin()}/api/health`);
     if (!response.ok) throw new Error("Health check failed");
     const session = await requestSession();
     if (session.auth_required && !session.authenticated) {

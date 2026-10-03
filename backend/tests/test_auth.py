@@ -99,6 +99,7 @@ class AuthBoundaryTest(unittest.TestCase):
         state = parse_qs(urlparse(start["headers"]["Location"]).query)["state"][0]
         callback, _ = invoke(app, "/auth/google/callback", query=f"state={state}&code=synthetic-code")
         self.assertEqual(callback["status"], "302 Found")
+        self.assertEqual(callback["headers"]["Location"], "http://localhost:3000")
         cookie = callback["headers"]["Set-Cookie"]
         self.assertIn("HttpOnly", cookie)
         self.assertIn("SameSite=Lax", cookie)

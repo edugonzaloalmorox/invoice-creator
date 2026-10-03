@@ -85,6 +85,20 @@ class ConfigurationTest(unittest.TestCase):
         self.assertFalse(result.ready)
         self.assertNotIn("synthetic-client-secret", " ".join(result.errors))
 
+    def test_quoted_environment_values_are_unwrapped_without_exposing_them(self):
+        values = configured_values()
+        values.update({
+            CONFIG_OAUTH_CLIENT_ID: '"client.apps.googleusercontent.com"',
+            CONFIG_OAUTH_CLIENT_SECRET: '"synthetic-client-secret"',
+            CONFIG_OAUTH_REDIRECT_URI: '"http://localhost:8000/auth/google/callback"',
+            CONFIG_OAUTH_SCOPES: '"openid,email,https://www.googleapis.com/auth/drive.file"',
+            CONFIG_SESSION_SECRET: '"synthetic-session-secret"',
+        })
+        result = load_config(values)
+        self.assertTrue(result.ready)
+        self.assertEqual(result.config.oauth_client_id, "client.apps.googleusercontent.com")
+        self.assertNotIn("synthetic-client-secret", " ".join(result.errors))
+
     def test_missing_and_invalid_configuration_has_safe_errors(self):
         result = load_config({CONFIG_TEMPLATE_ID: "real-secret-looking-id"})
         self.assertFalse(result.ready)

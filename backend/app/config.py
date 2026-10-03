@@ -59,8 +59,15 @@ class ConfigLoad:
         return self.config is not None and not self.errors
 
 
+def _clean(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1].strip()
+    return value
+
+
 def _required(values: dict[str, str], name: str, errors: list[str]) -> str:
-    value = values.get(name, "").strip()
+    value = _clean(values.get(name, ""))
     if not value:
         errors.append(f"{name} is required")
     return value
@@ -146,7 +153,7 @@ def load_config(values: dict[str, str] | None = None) -> ConfigLoad:
     connect_timeout = _positive_number(source, CONFIG_CONNECT_TIMEOUT, errors, maximum=300)
     read_timeout = _positive_number(source, CONFIG_READ_TIMEOUT, errors, maximum=300)
 
-    oauth_values = {name: source.get(name, "").strip() for name in (
+    oauth_values = {name: _clean(source.get(name, "")) for name in (
         CONFIG_OAUTH_CLIENT_ID,
         CONFIG_OAUTH_CLIENT_SECRET,
         CONFIG_OAUTH_REDIRECT_URI,

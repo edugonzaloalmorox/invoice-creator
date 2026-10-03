@@ -317,7 +317,7 @@ class Application:
         except AuthError as error:
             status = "503 Service Unavailable" if error.retryable else "400 Bad Request"
             return _error_response(start_response, status, error.code, "Google sign-in could not be completed.", request_id)
-        start_response("302 Found", [("Location", "/"), ("Set-Cookie", self._sessions.cookie_header(session_id, secure=self._secure_cookie())), ("Cache-Control", "no-store"), ("X-Request-ID", request_id)])
+        start_response("302 Found", [("Location", self.config_result.config.frontend_origin), ("Set-Cookie", self._sessions.cookie_header(session_id, secure=self._secure_cookie())), ("Cache-Control", "no-store"), ("X-Request-ID", request_id)])
         return [b""]
 
     def _auth_logout(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
