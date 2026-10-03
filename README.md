@@ -9,6 +9,11 @@ service-account credential and can fill an isolated copy of the selected templat
 The application currently supports one configured template, does not persist
 invoice data, and is not a production deployment.
 
+Optional Google user sign-in is enabled when all OAuth variables are configured.
+The configured scopes must include `openid`; the current local OAuth settings use
+only `drive.file`, so they can open Google consent but cannot yet establish a
+user session until the scope is updated and consent is granted again.
+
 ## Quick start
 
 Requirements:
@@ -113,6 +118,11 @@ defaults in [`Makefile`](Makefile) configure the fixture provider.
 | `INVOICE_MAX_RESPONSE_BYTES` | Positive response limit, up to 50 MiB |
 | `GOOGLE_PROVIDER_CONNECT_TIMEOUT_SECONDS` | Provider connection timeout, up to 300 seconds |
 | `GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS` | Provider read timeout, up to 300 seconds |
+| `GOOGLE_OAUTH_CLIENT_ID` | Google OAuth web client ID; backend configuration only |
+| `GOOGLE_OAUTH_CLIENT_SECRET` | Secret-managed OAuth client secret; never logged |
+| `GOOGLE_OAUTH_REDIRECT_URI` | Exact registered callback URL |
+| `GOOGLE_OAUTH_SCOPES` | Space-separated scopes; must include `openid` when enabled |
+| `SESSION_SECRET` | Secret used for process-local session configuration |
 
 Production requires an HTTPS frontend origin. Readiness returns `503` when a
 required value is missing or invalid. Do not put credentials, real template IDs,
@@ -131,6 +141,7 @@ Useful documentation:
 
 - [API contract](_docs/api.md)
 - [Operations runbook](_docs/operations.md)
+- [Google OAuth setup](_docs/google-oauth-setup.md)
 - [Testing guidelines](_docs/testing-guidelines.md)
 - [MVP acceptance review](_docs/acceptance-review.md)
 - [Product plan](_docs/invoice-filler-plan.md)

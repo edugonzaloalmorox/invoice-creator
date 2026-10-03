@@ -63,21 +63,38 @@ export function createInvoiceFormController({ preview } = {}) {
 
 export async function requestTemplate(url, { fetchImpl = globalThis.fetch } = {}) {
   const response = await fetchImpl(`${apiOrigin()}/api/template/connect`, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }),
+    method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }),
   });
   const payload = await response.json();
   return response.ok ? { ok: true, ...payload } : { ok: false, error: payload.error };
 }
 
-export function renderTemplateConnection(root, { connect = requestTemplate, onConnected } = {}) {
+export async function requestSession({ fetchImpl = globalThis.fetch } = {}) {
+  const response = await fetchImpl(`${apiOrigin()}/api/session`, { credentials: "include" });
+  const payload = await response.json();
+  return response.ok ? payload : { authenticated: false, auth_required: true };
+}
+
+export async function requestLogout({ fetchImpl = globalThis.fetch } = {}) {
+  const response = await fetchImpl(`${apiOrigin()}/auth/logout`, { method: "POST", credentials: "include" });
+  return response.ok;
+}
+
+export function renderTemplateConnection(root, { connect = requestTemplate, onConnected, user = null, logout } = {}) {
   let url = "";
   let status = "idle";
   let error = "";
   const render = () => {
     const pending = status === "pending";
-    root.innerHTML = `<section class="template-connect" aria-labelledby="template-heading"><p class="eyebrow">Start with a template</p><h1 id="template-heading">Where is your template?</h1><p class="template-help">Paste the link to the Google Docs template you want to fill.</p><form><label for="template-url">Google Docs template link</label><input id="template-url" name="template-url" type="url" value="${escapeHtml(url)}" placeholder="https://docs.google.com/document/d/..." autocomplete="off" required ${pending ? "disabled" : ""} ${error ? 'aria-invalid="true" aria-describedby="template-error"' : ""}>${error ? `<p id="template-error" class="error" role="alert">${escapeHtml(error)}</p>` : ""}<button class="button button-primary" type="submit" ${pending ? "disabled" : ""}>${pending ? "Checking template…" : "Load template"}</button></form></section>`;
+    const account = user ? `<p class="template-account" role="status">Signed in${user.email ? ` as ${escapeHtml(user.email)}` : ""}. <button class="link-button" id="logout" type="button">Sign out</button></p>` : "";
+    root.innerHTML = `<section class="template-connect" aria-labelledby="template-heading">${account}<p class="eyebrow">Start with a template</p><h1 id="template-heading">Where is your template?</h1><p class="template-help">Paste the link to the Google Docs template you want to fill.</p><form><label for="template-url">Google Docs template link</label><input id="template-url" name="template-url" type="url" value="${escapeHtml(url)}" placeholder="https://docs.google.com/document/d/..." autocomplete="off" required ${pending ? "disabled" : ""} ${error ? 'aria-invalid="true" aria-describedby="template-error"' : ""}>${error ? `<p id="template-error" class="error" role="alert">${escapeHtml(error)}</p>` : ""}<button class="button button-primary" type="submit" ${pending ? "disabled" : ""}>${pending ? "Checking template…" : "Load template"}</button></form></section>`;
     const form = root.querySelector("form");
     const input = root.querySelector("#template-url");
+    root.querySelector("#logout")?.addEventListener("click", async (event) => {
+      event.currentTarget.disabled = true;
+      await logout?.();
+      globalThis.location?.reload?.();
+    });
     input?.addEventListener("input", (event) => { url = event.target.value; error = ""; });
     form?.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -98,7 +115,7 @@ export function renderTemplateConnection(root, { connect = requestTemplate, onCo
 
 export async function requestPreview(values, { fetchImpl = globalThis.fetch, templateToken } = {}) {
   const response = await fetchImpl(`${apiOrigin()}/api/invoices/preview`, {
-    method: "POST", headers: { "Content-Type": "application/json", ...(templateToken ? { "X-Template-Selection": templateToken } : {}) }, body: JSON.stringify(values),
+    method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(templateToken ? { "X-Template-Selection": templateToken } : {}) }, body: JSON.stringify(values),
   });
   const payload = await response.json();
   return response.ok ? { ok: true, ...payload } : { ok: false, error: payload.error };

@@ -42,6 +42,8 @@ output { display: block; margin: 1rem 0; padding: .85rem 1rem; border-radius: 8p
 .button-primary { color: #fff; background: var(--blue); }
 .button-primary:hover:not(:disabled) { background: var(--blue-dark); }
 .button-secondary { color: var(--blue); border: 1px solid #b9c9ed; background: #fff; }
+.template-account { margin: 0 0 1rem; color: var(--muted); font-size: .92rem; }
+.link-button { border: 0; padding: 0; color: var(--blue); background: transparent; text-decoration: underline; cursor: pointer; }
 .form-message { margin: 1rem 0 0; color: var(--muted); font-size: .9rem; }
 .service-error, .loading { padding: 2rem; }
 .service-error p:not(.eyebrow) { color: var(--muted); }

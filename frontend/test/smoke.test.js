@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { appName, createInvoiceFormController, invoiceFields, renderTemplateConnection, requestPreview, requestTemplate } from "../src/app.js";
+import { appName, createInvoiceFormController, invoiceFields, renderTemplateConnection, requestLogout, requestPreview, requestSession, requestTemplate } from "../src/app.js";
 import { createFieldReviewController, requestGeneration } from "../src/review.js";
 
 test("frontend scaffold is importable", () => {
@@ -61,6 +61,19 @@ test("template connection sends only the link and returns the sanitized response
   assert.equal(request.options.method, "POST");
   assert.deepEqual(JSON.parse(request.options.body), { url: "https://docs.google.com/document/d/fixture-template/edit" });
   assert.equal(result.selection_token, "tpl_opaque");
+});
+
+test("session and logout requests carry browser credentials", async () => {
+  let sessionRequest;
+  const session = await requestSession({
+    fetchImpl: async (_url, options) => { sessionRequest = options; return { ok: true, json: async () => ({ authenticated: true, auth_required: true, user: { email: "synthetic@example.test" } }) }; },
+  });
+  assert.equal(session.authenticated, true);
+  assert.equal(sessionRequest.credentials, "include");
+  let logoutRequest;
+  assert.equal(await requestLogout({ fetchImpl: async (_url, options) => { logoutRequest = options; return { ok: true }; } }), true);
+  assert.equal(logoutRequest.method, "POST");
+  assert.equal(logoutRequest.credentials, "include");
 });
 
 test("preview and generation requests carry the opaque template selection", async () => {

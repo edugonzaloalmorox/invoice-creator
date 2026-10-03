@@ -68,6 +68,22 @@ body, table, header, footer, and split-run text, then performs replacement only
 on a temporary copy before export and cleanup. Never place a token, service-account
 key, real template ID, or document contents in this repository.
 
+## Google user sign-in
+
+When user OAuth is enabled, register the exact `GOOGLE_OAUTH_REDIRECT_URI` and
+configure `GOOGLE_OAUTH_SCOPES` with `openid` plus only the approved Drive/Docs
+scope. The browser receives only a short-lived session cookie; authorization and
+refresh tokens remain server-side. A missing `openid` scope prevents identity
+creation and readiness fails safely. After changing scopes or redirect URIs,
+re-authorize through `/auth/google` and verify `/api/session` before testing a
+template connection.
+
+For denied consent, invalid state, expired sessions, or revoked access, sign in
+again rather than copying authorization codes or tokens into tickets. Durable
+encrypted token/session persistence and refresh recovery are follow-up #24.
+See [_docs/google-oauth-setup.md](google-oauth-setup.md) for the per-environment
+Cloud project, consent, redirect, scope, Picker, and disposable-account checklist.
+
 ## Incident response
 
 ### Credential failure

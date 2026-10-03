@@ -13,6 +13,7 @@ import google.auth.exceptions
 import httplib2
 from google_auth_httplib2 import AuthorizedHttp
 from google.oauth2 import service_account
+from google.oauth2 import credentials as user_credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
@@ -155,18 +156,47 @@ class GoogleDocumentProvider:
         drive_service=None,
         docs_service=None,
         credentials_loader: Callable[[str], Any] = load_service_account_credentials,
+        credentials=None,
     ):
         self.credential_reference = credential_reference
         self.timeout_seconds = max(connect_timeout_seconds, read_timeout_seconds)
         self._drive_service = drive_service
         self._docs_service = docs_service
         self._credentials_loader = credentials_loader
+        self._credentials = credentials
+
+    @classmethod
+    def for_user_session(
+        cls,
+        *,
+        access_token: str,
+        refresh_token: str | None,
+        client_id: str,
+        client_secret: str,
+        scopes: tuple[str, ...],
+        connect_timeout_seconds: float = 3,
+        read_timeout_seconds: float = 10,
+    ):
+        credentials = user_credentials.Credentials(
+            token=access_token,
+            refresh_token=refresh_token,
+            token_uri="https://oauth2.googleapis.com/token",
+            client_id=client_id,
+            client_secret=client_secret,
+            scopes=list(scopes),
+        )
+        return cls(
+            "oauth://signed-in-user",
+            connect_timeout_seconds=connect_timeout_seconds,
+            read_timeout_seconds=read_timeout_seconds,
+            credentials=credentials,
+        )
 
     def _services(self):
         if self._drive_service is not None and self._docs_service is not None:
             return self._drive_service, self._docs_service
         try:
-            credentials = self._credentials_loader(self.credential_reference)
+            credentials = self._credentials or self._credentials_loader(self.credential_reference)
             http = AuthorizedHttp(credentials, http=httplib2.Http(timeout=self.timeout_seconds))
             self._drive_service = build("drive", "v3", http=http, cache_discovery=False)
             self._docs_service = build("docs", "v1", http=http, cache_discovery=False)

@@ -25,6 +25,29 @@ provide a calculated total or template identifier.
 
 ## Endpoints
 
+### `GET /auth/google`
+
+Starts the Google OAuth 2.0 authorization-code flow. The backend generates a
+single-use state value and redirects to Google; client secrets and tokens never
+appear in the browser URL.
+
+### `GET /auth/google/callback`
+
+Validates the one-time state, exchanges the authorization code server-side, and
+creates a process-local HttpOnly, SameSite=Lax session cookie. Invalid state,
+denied consent, revoked authorization, and provider failures return safe classified
+errors. Durable encrypted session/token storage is follow-up #24.
+
+### `POST /auth/logout`
+
+Deletes the current process-local session and expires the session cookie.
+
+### `GET /api/session`
+
+Returns only authentication state and sanitized user identity metadata. When OAuth
+is not configured it returns `{"authenticated":true,"auth_required":false}` for
+the credential-free fixture workflow.
+
 ### `GET /api/health`
 
 Returns a lightweight liveness response. It should not require Google credentials or

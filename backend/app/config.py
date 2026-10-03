@@ -15,6 +15,11 @@ CONFIG_MAX_REQUEST_BYTES = "INVOICE_MAX_REQUEST_BYTES"
 CONFIG_MAX_RESPONSE_BYTES = "INVOICE_MAX_RESPONSE_BYTES"
 CONFIG_CONNECT_TIMEOUT = "GOOGLE_PROVIDER_CONNECT_TIMEOUT_SECONDS"
 CONFIG_READ_TIMEOUT = "GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS"
+CONFIG_OAUTH_CLIENT_ID = "GOOGLE_OAUTH_CLIENT_ID"
+CONFIG_OAUTH_CLIENT_SECRET = "GOOGLE_OAUTH_CLIENT_SECRET"
+CONFIG_OAUTH_REDIRECT_URI = "GOOGLE_OAUTH_REDIRECT_URI"
+CONFIG_OAUTH_SCOPES = "GOOGLE_OAUTH_SCOPES"
+CONFIG_SESSION_SECRET = "SESSION_SECRET"
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +38,15 @@ class AppConfig:
     max_response_bytes: int
     provider_connect_timeout_seconds: float
     provider_read_timeout_seconds: float
+    oauth_client_id: str | None = None
+    oauth_client_secret: str | None = None
+    oauth_redirect_uri: str | None = None
+    oauth_scopes: tuple[str, ...] = ()
+    session_secret: str | None = None
+
+    @property
+    def oauth_configured(self) -> bool:
+        return bool(self.oauth_client_id)
 
 
 @dataclass(frozen=True, slots=True)
@@ -132,6 +146,24 @@ def load_config(values: dict[str, str] | None = None) -> ConfigLoad:
     connect_timeout = _positive_number(source, CONFIG_CONNECT_TIMEOUT, errors, maximum=300)
     read_timeout = _positive_number(source, CONFIG_READ_TIMEOUT, errors, maximum=300)
 
+    oauth_values = {name: source.get(name, "").strip() for name in (
+        CONFIG_OAUTH_CLIENT_ID,
+        CONFIG_OAUTH_CLIENT_SECRET,
+        CONFIG_OAUTH_REDIRECT_URI,
+        CONFIG_OAUTH_SCOPES,
+        CONFIG_SESSION_SECRET,
+    )}
+    if any(oauth_values.values()) and not all(oauth_values.values()):
+        errors.append("Google OAuth configuration must be complete")
+    oauth_redirect = oauth_values[CONFIG_OAUTH_REDIRECT_URI]
+    if oauth_redirect:
+        parsed_redirect = urlparse(oauth_redirect)
+        if parsed_redirect.scheme not in {"http", "https"} or not parsed_redirect.netloc or parsed_redirect.query or parsed_redirect.fragment:
+            errors.append(f"{CONFIG_OAUTH_REDIRECT_URI} must be an HTTP(S) callback URL")
+    oauth_scopes = tuple(scope for scope in oauth_values[CONFIG_OAUTH_SCOPES].replace(",", " ").split() if scope)
+    if oauth_values[CONFIG_OAUTH_CLIENT_ID] and "openid" not in oauth_scopes:
+        errors.append(f"{CONFIG_OAUTH_SCOPES} must include openid for user identity")
+
     if errors:
         return ConfigLoad(None, tuple(errors))
     return ConfigLoad(
@@ -144,6 +176,11 @@ def load_config(values: dict[str, str] | None = None) -> ConfigLoad:
             max_response,
             connect_timeout,
             read_timeout,
+            oauth_values[CONFIG_OAUTH_CLIENT_ID] or None,
+            oauth_values[CONFIG_OAUTH_CLIENT_SECRET] or None,
+            oauth_redirect or None,
+            oauth_scopes,
+            oauth_values[CONFIG_SESSION_SECRET] or None,
         ),
         (),
     )

@@ -1,4 +1,4 @@
-import { renderInvoiceForm, renderTemplateConnection, requestPreview, requestTemplate } from "./app.js";
+import { renderInvoiceForm, renderTemplateConnection, requestLogout, requestPreview, requestSession, requestTemplate } from "./app.js";
 import { requestGeneration } from "./review.js";
 
 const root = document.querySelector("#app");
@@ -8,13 +8,24 @@ function renderApplicationError(message) {
   root.querySelector("#retry").addEventListener("click", start);
 }
 
+function renderSignIn() {
+  root.innerHTML = '<section class="service-error" aria-labelledby="sign-in-title"><p class="eyebrow">Sign in required</p><h2 id="sign-in-title">Sign in with Google</h2><p>Sign in to connect a template and create an invoice.</p><a class="button button-primary" href="http://localhost:8000/auth/google">Continue with Google</a></section>';
+}
+
 async function start() {
   root.innerHTML = '<p class="loading" role="status">Connecting to the invoice service…</p>';
   try {
     const response = await fetch("http://localhost:8000/api/health");
     if (!response.ok) throw new Error("Health check failed");
+    const session = await requestSession();
+    if (session.auth_required && !session.authenticated) {
+      renderSignIn();
+      return;
+    }
     renderTemplateConnection(root, {
       connect: requestTemplate,
+      user: session.user,
+      logout: requestLogout,
       onConnected: ({ selection_token: templateToken }) => {
         renderInvoiceForm(root, { preview: (values) => requestPreview(values, { templateToken }) });
         wireGeneration(templateToken);

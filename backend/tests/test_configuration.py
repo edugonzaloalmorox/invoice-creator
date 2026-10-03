@@ -13,6 +13,11 @@ from backend.app.config import (
     CONFIG_MAX_RESPONSE_BYTES,
     CONFIG_READ_TIMEOUT,
     CONFIG_TEMPLATE_ID,
+    CONFIG_OAUTH_CLIENT_ID,
+    CONFIG_OAUTH_CLIENT_SECRET,
+    CONFIG_OAUTH_REDIRECT_URI,
+    CONFIG_OAUTH_SCOPES,
+    CONFIG_SESSION_SECRET,
     load_config,
 )
 from backend.app.main import create_app
@@ -60,6 +65,25 @@ class ConfigurationTest(unittest.TestCase):
         self.assertTrue(result.ready)
         self.assertEqual(result.config.max_request_bytes, 1_048_576)
         self.assertEqual(result.config.provider_read_timeout_seconds, 10.0)
+
+    def test_oauth_configuration_requires_identity_scope_and_is_typed(self):
+        values = configured_values()
+        values.update({
+            CONFIG_OAUTH_CLIENT_ID: "client.apps.googleusercontent.com",
+            CONFIG_OAUTH_CLIENT_SECRET: "synthetic-client-secret",
+            CONFIG_OAUTH_REDIRECT_URI: "http://localhost:8000/auth/google/callback",
+            CONFIG_OAUTH_SCOPES: "openid,email,https://www.googleapis.com/auth/drive.file",
+            CONFIG_SESSION_SECRET: "synthetic-session-secret",
+        })
+        result = load_config(values)
+        self.assertTrue(result.ready)
+        self.assertTrue(result.config.oauth_configured)
+        self.assertEqual(result.config.oauth_scopes[0], "openid")
+
+        values[CONFIG_OAUTH_SCOPES] = "https://www.googleapis.com/auth/drive.file"
+        result = load_config(values)
+        self.assertFalse(result.ready)
+        self.assertNotIn("synthetic-client-secret", " ".join(result.errors))
 
     def test_missing_and_invalid_configuration_has_safe_errors(self):
         result = load_config({CONFIG_TEMPLATE_ID: "real-secret-looking-id"})
