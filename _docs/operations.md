@@ -130,7 +130,7 @@ contents or IDs. Automating this inventory belongs to #TASK-21.
 
 ## Safe observability and rollback
 
-Safe logs/metrics include endpoint, status class, latency, readiness state, provider
+Safe logs/metrics include the query-free endpoint, status class, latency, readiness state, provider
 operation class, rate-limit counts, cleanup success/failure counts, and generated
 request IDs. Never record request bodies, bank fields, credentials, PDF bytes,
 document contents, or raw provider payloads.
