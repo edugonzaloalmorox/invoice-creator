@@ -7,7 +7,7 @@ from io import BytesIO
 import secrets
 import time
 from typing import Callable
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlparse
 
 from .auth import AuthError, OAuthClient, OAuthSettings, SessionStore
 from .config import AppConfig, ConfigLoad, load_config
@@ -26,6 +26,29 @@ def project_name() -> str:
 
 def _request_id() -> str:
     return f"req_{secrets.token_urlsafe(12)}"
+
+
+def _origin_allowed(request_origin: str, configured_origin: str, environment: str) -> bool:
+    """Allow the configured origin, plus localhost aliases during local development."""
+
+    if request_origin == configured_origin:
+        return True
+    if environment.lower() == "production":
+        return False
+    try:
+        requested = urlparse(request_origin)
+        configured = urlparse(configured_origin)
+        requested_port = requested.port or (443 if requested.scheme == "https" else 80)
+        configured_port = configured.port or (443 if configured.scheme == "https" else 80)
+    except ValueError:
+        return False
+    local_hosts = {"localhost", "127.0.0.1"}
+    return (
+        requested.scheme == configured.scheme
+        and requested_port == configured_port
+        and requested.hostname in local_hosts
+        and configured.hostname in local_hosts
+    )
 
 
 def _json_response(start_response: Callable, status: str, payload: dict, request_id: str) -> list[bytes]:
@@ -151,9 +174,11 @@ class Application:
         start_response = recording_start_response
         request_origin = environ.get("HTTP_ORIGIN")
         configured_origin = self.config_result.config.frontend_origin if self.config_result.config else None
-        if request_origin and configured_origin and request_origin != configured_origin:
+        environment = self.config_result.config.environment if self.config_result.config else "production"
+        origin_allowed = bool(request_origin and configured_origin and _origin_allowed(request_origin, configured_origin, environment))
+        if request_origin and configured_origin and not origin_allowed:
             return _error_response(start_response, "403 Forbidden", "origin_forbidden", "Request origin is not allowed.", request_id)
-        if request_origin and configured_origin == request_origin:
+        if origin_allowed:
             cors_original_start_response = start_response
 
             def cors_start_response(status, headers):
@@ -162,7 +187,7 @@ class Application:
 
             start_response = cors_start_response
         if environ.get("REQUEST_METHOD") == "OPTIONS" and request_origin:
-            if configured_origin != request_origin:
+            if not origin_allowed:
                 return _error_response(start_response, "403 Forbidden", "origin_forbidden", "Request origin is not allowed.", request_id)
             start_response("204 No Content", [("Content-Length", "0"), ("Access-Control-Allow-Methods", "GET, POST, OPTIONS"), ("Access-Control-Allow-Headers", "Content-Type, X-Template-Selection"), ("Access-Control-Allow-Credentials", "true"), ("Cache-Control", "no-store"), ("X-Request-ID", request_id)])
             return [b""]

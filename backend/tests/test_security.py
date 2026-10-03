@@ -46,6 +46,20 @@ class SecurityControlsTest(unittest.TestCase):
         self.assertEqual(allowed["status"], "200 OK")
         self.assertEqual(allowed["headers"]["Access-Control-Allow-Origin"], "http://127.0.0.1:3000")
 
+    def test_localhost_and_loopback_are_cors_aliases_during_development(self):
+        app = create_app(load_config(configured_values()).config)
+        allowed, _ = call_with_origin(app, "/api/health", "http://127.0.0.1:3000")
+        self.assertEqual(allowed["status"], "200 OK")
+        self.assertEqual(allowed["headers"]["Access-Control-Allow-Origin"], "http://127.0.0.1:3000")
+
+        values = configured_values()
+        values[CONFIG_ENVIRONMENT] = "production"
+        values[CONFIG_FRONTEND_ORIGIN] = "https://localhost:3000"
+        production_app = create_app(load_config(values).config)
+        denied, payload = call_with_origin(production_app, "/api/health", "https://127.0.0.1:3000")
+        self.assertEqual(denied["status"], "403 Forbidden")
+        self.assertEqual(payload["error"]["code"], "origin_forbidden")
+
     def test_template_preflight_has_one_origin_header(self):
         values = configured_values()
         values[CONFIG_FRONTEND_ORIGIN] = "http://127.0.0.1:3000"
