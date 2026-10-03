@@ -308,7 +308,13 @@ class Application:
         if not state or not self._sessions.consume_state(state):
             return _error_response(start_response, "400 Bad Request", "invalid_oauth_state", "The sign-in request expired or is invalid.", request_id)
         if params.get("error"):
-            return _error_response(start_response, "400 Bad Request", "authorization_denied", "Google sign-in was not completed.", request_id)
+            error_name = params.get("error", [""])[0]
+            message = (
+                "This Google account is not approved for the app yet. Add it as an OAuth test user or use an approved account."
+                if error_name == "access_denied"
+                else "Google sign-in was not completed."
+            )
+            return _error_response(start_response, "400 Bad Request", "authorization_denied", message, request_id)
         code = params.get("code", [""])[0]
         if not code:
             return _error_response(start_response, "400 Bad Request", "authorization_denied", "Google sign-in was not completed.", request_id)

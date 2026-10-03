@@ -82,6 +82,16 @@ Record only status codes, safe error classes, timings, and aggregate cleanup
 results. Do not retain consent screenshots containing account details, document
 IDs, tokens, or invoice data.
 
+## `403 access_denied` during testing
+
+If Google says the app is available only to developer-approved testers, open the
+project’s OAuth consent screen in Google Cloud Console and add the exact Google
+account email under **Test users**. Save the change, then restart the authorization
+flow. Do not try to work around the restriction by changing the redirect URI or
+placing credentials in the browser. Testing-mode projects are intended for a
+limited allowlist; publish and complete Google verification only when the app is
+ready for users outside that allowlist.
+
 ## Rotation and emergency disablement
 
 Change the OAuth client secret and session secret through the secret manager,

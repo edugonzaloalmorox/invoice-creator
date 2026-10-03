@@ -138,6 +138,16 @@ class AuthBoundaryTest(unittest.TestCase):
         self.assertEqual(protected["status"], "401 Unauthorized")
         self.assertEqual(payload["error"]["code"], "authentication_required")
 
+    def test_denied_consent_explains_test_user_configuration_without_echoing_provider_data(self):
+        app = self.configured_app(lambda request, timeout: FakeResponse({}))
+        start, _ = invoke(app, "/auth/google")
+        state = parse_qs(urlparse(start["headers"]["Location"]).query)["state"][0]
+        status, payload = invoke(app, "/auth/google/callback", query=f"state={state}&error=access_denied")
+        self.assertEqual(status["status"], "400 Bad Request")
+        self.assertEqual(payload["error"]["code"], "authorization_denied")
+        self.assertIn("approved", payload["error"]["message"])
+        self.assertNotIn("access_denied", json.dumps(payload))
+
     def test_oauth_client_never_puts_tokens_in_userinfo_url(self):
         requests = []
 
