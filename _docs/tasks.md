@@ -447,22 +447,22 @@ user rather than a shared service account.
 
 ## Acceptance criteria
 
-- [ ] Google OAuth 2.0 web-server authorization-code flow is documented and
+- [x] Google OAuth 2.0 web-server authorization-code flow is documented and
   implemented with a registered redirect URI, validated `state`, and backend
   code exchange; access tokens and refresh tokens never pass through browser
   storage or URLs.
-- [ ] A successful callback creates or resumes a local user identity and a
+- [x] A successful callback creates or resumes a local user identity and a
   server-managed session; the session cookie has documented expiry, secure,
   HttpOnly, SameSite, logout, and rotation behavior.
-- [ ] Unauthenticated users can only access the documented sign-in/start routes;
+- [x] Unauthenticated users can only access the documented sign-in/start routes;
   template reading, preview, generation, and artifact access require a valid
   session belonging to the requesting user.
-- [ ] Session expiry, logout, revoked Google consent, denied consent, invalid
+- [x] Session expiry, logout, revoked Google consent, denied consent, invalid
   OAuth state, and Google/provider outage have visible safe behavior and do not
   disclose tokens or provider payloads.
-- [ ] Authorization checks prevent one user from reading another user’s template
+- [x] Authorization checks prevent one user from reading another user’s template
   selection, invoice data, temporary document, or generated artifact.
-- [ ] Tests cover callback/state/session and authorization boundaries using fake
+- [x] Tests cover callback/state/session and authorization boundaries using fake
   identities and tokens, without real personal, bank, or Google data.
 
 ## Out of scope
@@ -559,28 +559,28 @@ shared service-account identity.
 
 ## Acceptance criteria
 
-- [ ] The initial template screen clearly shows the signed-in Google account,
+- [x] The initial template screen clearly shows the signed-in Google account,
   authorization state, and an accessible action to connect or re-authorize Drive.
-- [ ] The user can select a Google Docs template through the authorized Drive/Docs
+- [x] The user can select a Google Docs template through the authorized Drive/Docs
   flow; if a URL is retained, it is accepted only after the backend verifies that
   the authenticated user can access that exact Google Docs file.
-- [ ] Loading shows an accessible pending state, prevents duplicate submissions,
+- [x] Loading shows an accessible pending state, prevents duplicate submissions,
   and preserves the selected link/selection across validation or network failure.
-- [ ] The backend obtains the current user’s OAuth credentials from the server-side
+- [x] The backend obtains the current user’s OAuth credentials from the server-side
   session/token store, extracts and validates the document ID, and never accepts
   client-supplied identity, access tokens, or refresh tokens.
-- [ ] Unsupported links, malformed URLs, denied access, revoked consent, expired
+- [x] Unsupported links, malformed URLs, denied access, revoked consent, expired
   sessions, trashed/non-Docs files, and provider failures return safe actionable
   errors without leaking document contents, tokens, or provider payloads.
-- [ ] A successful response contains only the per-user opaque selection token,
+- [x] A successful response contains only the per-user opaque selection token,
   sanitized template identity, field-map version, and reviewable field metadata;
   raw document content and OAuth credentials are never returned.
-- [ ] Preview, replacement, export, cleanup, and generated-artifact access use the
+- [x] Preview, replacement, export, cleanup, and generated-artifact access use the
   same authorized user/template boundary, and one user cannot use another user’s
   selection token.
-- [ ] Retry and back-navigation preserve the user’s selection and invoice edits
+- [x] Retry and back-navigation preserve the user’s selection and invoice edits
   without creating duplicate provider work.
-- [ ] Tests cover OAuth-authenticated success, access denial, revoked/expired
+- [x] Tests cover OAuth-authenticated success, access denial, revoked/expired
   authorization, invalid selection ownership, provider failure, duplicate
   submission, sensitive-value redaction, and successful handoff using mocked or
   disposable Google resources.
@@ -612,35 +612,55 @@ shared service-account identity.
   decisions in the task implementation.
 - Use sanitized/disposable fixtures and follow `_docs/testing-guidelines.md`.
 
-## 23. Review and repair Google authentication for template connection
+## 23. Diagnose and repair authenticated Google Docs template connection
 
 ## Goal
 
 When done, `POST /api/template/connect` uses the signed-in user’s OAuth 2.0
 credentials to read an authorized Google Docs template in the target environment,
-or it returns a correctly classified, actionable failure. The original failure to
-investigate was a `502 Bad Gateway` for this request:
+or it returns a correctly classified, actionable failure. The investigation must
+account for the observed browser/server symptom that the CORS preflight succeeds
+(`OPTIONS /api/template/connect` returns `204`) while the document contents are
+not fetched. It must also retain the earlier reported `502 Bad Gateway` case:
 `127.0.0.1 - - [02/Oct/2026 08:37:00] "POST /api/template/connect HTTP/1.1" 502 138`.
 
 ## Acceptance criteria
 
-- [ ] The original failure is reproduced with a sanitized/disposable Google Docs
-  template and a signed-in test identity; evidence records whether it is caused by
-  OAuth callback/state, token refresh/revocation, user permission, template
-  access/type, or provider availability.
-- [ ] OAuth authorization and refresh use the documented client configuration and
+- [x] The failure is reproduced with a sanitized/disposable Google Docs template
+  and a signed-in test identity; evidence separately records the browser request
+  sequence and response for the `OPTIONS` preflight and the actual `POST`, and
+  identifies whether the failure is in frontend API-origin/configuration,
+  credentialed CORS/cookie handling, OAuth callback/state, token
+  refresh/revocation, user permission, template access/type, or provider
+  availability.
+- [x] When the preflight returns `204`, the frontend still sends the actual
+  credentialed `POST` with the expected JSON body, and the response includes the
+  documented CORS headers; a preflight success is not treated as a successful
+  template connection.
+- [x] The authenticated `POST` reaches the intended backend route, accepts the
+  session cookie under the documented local/deployed origin configuration, and
+  obtains the current user’s server-side OAuth credentials rather than falling
+  back to a shared service account or an unauthenticated request.
+- [x] For a valid authorized Google Docs file, the backend completes the Docs/Drive
+  read and returns the documented sanitized connection/field response; logs and
+  public responses make clear whether failure occurred before or during provider
+  access without exposing document contents.
+- [x] OAuth authorization and refresh use the documented client configuration and
   scopes; client secrets, access tokens, refresh tokens, document IDs, and user
   identity details are absent from logs, URLs, request IDs, and public errors.
-- [ ] Permission-denied, revoked/expired authorization, template-not-found/non-Doc,
-  provider-unavailable, and timeout cases map to documented safe status/code
-  behavior without raw provider payloads.
-- [ ] A successful connection reads the template without mutating the master, and
+- [x] Permission-denied, revoked/expired authorization, missing or non-Docs files,
+  provider-unavailable, timeout, malformed request, and missing-session cases map
+  to documented safe status/code behavior without raw provider payloads.
+- [x] A successful connection reads the template without mutating the master, and
   preview, generation, and cleanup continue through the authenticated user boundary.
-- [ ] Automated tests cover the diagnosed failure and successful OAuth-authenticated
-  path with mocked tokens or an approved disposable environment; the default suite
-  remains runnable without network access or real credentials.
-- [ ] The runbook records OAuth consent, redirect, token-revocation, reauthorization,
-  and safe recovery checks without real identifiers or secrets.
+- [x] Automated tests cover the diagnosed failure, including preflight plus actual
+  POST behavior, credentialed origin/session handling, and the successful
+  OAuth-authenticated path with mocked tokens or an approved disposable
+  environment; the default suite remains runnable without network access or real
+  credentials.
+- [x] The runbook records OAuth consent, redirect, origin/cookie configuration,
+  token-revocation, reauthorization, and safe recovery checks without real
+  identifiers or secrets.
 
 ## Out of scope
 
@@ -652,6 +672,8 @@ investigate was a `502 Bad Gateway` for this request:
 - Production platform provisioning or long-term monitoring, covered by #TASK-21.
 - Changes to template parsing, field detection, replacement, export, or cleanup,
   covered by #TASK-7, #TASK-9, #TASK-11, and #TASK-12.
+- General frontend/API deployment configuration unrelated to this connection
+  flow, covered by #TASK-2 and #TASK-16.
 
 ## Constraints
 
@@ -660,6 +682,9 @@ investigate was a `502 Bad Gateway` for this request:
 - Reuse the existing provider/error contract and field-map/generation boundaries
   from #TASK-2, #TASK-7, #TASK-8, #TASK-9, #TASK-11, #TASK-12, and #TASK-22; do not
   silently turn an authorization failure into a successful-looking connection.
+- Treat `OPTIONS 204` as only a CORS preflight result; verify the subsequent
+  credentialed `POST` in browser/network and backend evidence before declaring the
+  connection fixed.
 - Use sanitized/disposable data, follow `_docs/api.md`, `_docs/operations.md`,
   `_docs/credential-rotation.md`, and `_docs/testing-guidelines.md`, and do not
   add dependencies without approval.

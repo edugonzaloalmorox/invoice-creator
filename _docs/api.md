@@ -34,9 +34,12 @@ appear in the browser URL.
 ### `GET /auth/google/callback`
 
 Validates the one-time state, exchanges the authorization code server-side, and
-creates a process-local HttpOnly, SameSite=Lax session cookie. Invalid state,
-denied consent, revoked authorization, and provider failures return safe classified
-errors. Durable encrypted session/token storage is follow-up #24.
+creates a process-local session cookie with `Max-Age=3600`, `Path=/`, `HttpOnly`,
+and `SameSite=Lax`; `Secure` is added in production. The callback always mints a
+new opaque session ID, preventing session fixation. Access-token refresh rotates
+the server-side access token without exposing or changing the browser cookie.
+Invalid state, denied consent, revoked authorization, and provider failures return
+safe classified errors. Durable encrypted session/token storage is follow-up #24.
 
 ### `POST /auth/logout`
 
@@ -130,7 +133,10 @@ and mapped review fields. The browser sends that token in the
 it never sends a document ID directly. Malformed or non-Google links return
 `400 invalid_template_url`. Missing access, invalid credentials, trashed/non-Doc
 files, and provider failures return safe classified errors without document
-contents or provider payloads.
+contents or provider payloads: access denial is `403 template_access_denied`,
+missing/non-Docs files are `404 template_not_found`, reauthorization is
+`401 reauthorization_required`, provider outage is `503 provider_unavailable`,
+and timeout is `504 provider_timeout`.
 
 ### `GET /api/metrics`
 

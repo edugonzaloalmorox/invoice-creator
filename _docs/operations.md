@@ -72,11 +72,14 @@ key, real template ID, or document contents in this repository.
 
 When user OAuth is enabled, register the exact `GOOGLE_OAUTH_REDIRECT_URI` and
 configure `GOOGLE_OAUTH_SCOPES` with `openid` plus only the approved Drive/Docs
-scope. The browser receives only a short-lived session cookie; authorization and
-refresh tokens remain server-side. A missing `openid` scope prevents identity
-creation and readiness fails safely. After changing scopes or redirect URIs,
-re-authorize through `/auth/google` and verify `/api/session` before testing a
-template connection.
+scope. The browser receives only a short-lived session cookie with a 3600-second
+Max-Age, `HttpOnly`, `SameSite=Lax`, and `Secure` in production; authorization and
+refresh tokens remain server-side. Each successful callback issues a new opaque
+session ID. Access-token refresh rotates only the server-side access token, and
+logout invalidates the session and expires the cookie. A missing `openid` scope
+prevents identity creation and readiness fails safely. After changing scopes or
+redirect URIs, re-authorize through `/auth/google` and verify `/api/session` before
+testing a template connection.
 
 For denied consent, invalid state, expired sessions, or revoked access, sign in
 again rather than copying authorization codes or tokens into tickets. Durable

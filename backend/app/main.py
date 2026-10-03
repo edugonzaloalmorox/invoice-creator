@@ -386,9 +386,15 @@ class Application:
         try:
             fields = detect_fields(self._provider_for(environ), template_id)
         except ProviderError as error:
-            status = "504 Gateway Timeout" if error.retryable else "502 Bad Gateway"
-            code = "provider_timeout" if error.retryable else "template_unavailable"
-            return _error_response(start_response, status, code, "The template could not be authenticated or read.", request_id)
+            status, code, message = {
+                "credentials_invalid": ("401 Unauthorized", "reauthorization_required", "Re-authorize Google access to continue."),
+                "permission_denied": ("403 Forbidden", "template_access_denied", "You do not have access to this Google Docs template."),
+                "template_not_found": ("404 Not Found", "template_not_found", "The Google Docs template was not found or is not a supported document."),
+                "provider_unavailable": ("503 Service Unavailable", "provider_unavailable", "Google Docs is temporarily unavailable. Try again."),
+                "unavailable": ("503 Service Unavailable", "provider_unavailable", "Google Docs is temporarily unavailable. Try again."),
+                "timeout": ("504 Gateway Timeout", "provider_timeout", "Google Docs took too long to respond. Try again."),
+            }.get(error.code, ("502 Bad Gateway", "template_unavailable", "The template could not be authenticated or read."))
+            return _error_response(start_response, status, code, message, request_id)
         selection = f"tpl_{secrets.token_urlsafe(18)}"
         if len(self._template_selections) >= 100:
             self._template_selections.pop(next(iter(self._template_selections)))

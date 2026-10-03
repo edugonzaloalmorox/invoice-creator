@@ -86,7 +86,7 @@ export function renderTemplateConnection(root, { connect = requestTemplate, onCo
   let error = "";
   const render = () => {
     const pending = status === "pending";
-    const account = user ? `<p class="template-account" role="status">Signed in${user.email ? ` as ${escapeHtml(user.email)}` : ""}. <button class="link-button" id="logout" type="button">Sign out</button></p>` : "";
+    const account = user ? `<div class="template-account"><p role="status">Signed in${user.email ? ` as ${escapeHtml(user.email)}` : ""}. Google Drive access is authorized.</p><p><a class="link-button" href="${apiOrigin()}/auth/google">Re-authorize Google Drive</a> · <button class="link-button" id="logout" type="button">Sign out</button></p></div>` : "";
     root.innerHTML = `<section class="template-connect" aria-labelledby="template-heading">${account}<p class="eyebrow">Start with a template</p><h1 id="template-heading">Where is your template?</h1><p class="template-help">Paste the link to the Google Docs template you want to fill.</p><form><label for="template-url">Google Docs template link</label><input id="template-url" name="template-url" type="url" value="${escapeHtml(url)}" placeholder="https://docs.google.com/document/d/..." autocomplete="off" required ${pending ? "disabled" : ""} ${error ? 'aria-invalid="true" aria-describedby="template-error"' : ""}>${error ? `<p id="template-error" class="error" role="alert">${escapeHtml(error)}</p>` : ""}<button class="button button-primary" type="submit" ${pending ? "disabled" : ""}>${pending ? "Checking template…" : "Load template"}</button></form></section>`;
     const form = root.querySelector("form");
     const input = root.querySelector("#template-url");

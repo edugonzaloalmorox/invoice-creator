@@ -2,8 +2,9 @@ import json
 from io import BytesIO
 from urllib.parse import parse_qs, urlparse
 import unittest
+from unittest.mock import Mock, patch
 
-from backend.app.auth import AuthError, OAuthClient, OAuthSettings, Session
+from backend.app.auth import AuthError, OAuthClient, OAuthSettings, Session, SessionStore
 from backend.app.config import (
     CONFIG_OAUTH_CLIENT_ID,
     CONFIG_OAUTH_CLIENT_SECRET,
@@ -12,6 +13,7 @@ from backend.app.config import (
     CONFIG_SESSION_SECRET,
     load_config,
 )
+from backend.app.google_provider import GoogleDocumentProvider
 from backend.app.main import create_app
 from backend.app.provider import FixtureDocumentProvider
 from backend.tests.test_configuration import configured_values
@@ -101,11 +103,28 @@ class AuthBoundaryTest(unittest.TestCase):
         self.assertEqual(callback["status"], "302 Found")
         self.assertEqual(callback["headers"]["Location"], "http://localhost:3000")
         cookie = callback["headers"]["Set-Cookie"]
+        self.assertIn("Max-Age=3600", cookie)
+        self.assertIn("Path=/", cookie)
         self.assertIn("HttpOnly", cookie)
         self.assertIn("SameSite=Lax", cookie)
+        self.assertNotIn("Secure", cookie)
         self.assertNotIn("synthetic-access", cookie)
         self.assertNotIn("synthetic-refresh", cookie)
         self.assertEqual(len(calls), 2)
+
+        preflight, _ = invoke(
+            app,
+            "/api/template/connect",
+            method="OPTIONS",
+            headers={
+                "Origin": "http://localhost:3000",
+                "Access-Control-Request-Method": "POST",
+                "Access-Control-Request-Headers": "content-type",
+            },
+        )
+        self.assertEqual(preflight["status"], "204 No Content")
+        self.assertEqual(preflight["headers"]["Access-Control-Allow-Origin"], "http://localhost:3000")
+        self.assertEqual(preflight["headers"]["Access-Control-Allow-Credentials"], "true")
 
         session, payload = invoke(app, "/api/session", headers={"Cookie": cookie})
         self.assertEqual(session["status"], "200 OK")
@@ -116,9 +135,11 @@ class AuthBoundaryTest(unittest.TestCase):
             "/api/template/connect",
             method="POST",
             body=json.dumps({"url": "https://docs.google.com/document/d/fixture-template/edit"}).encode(),
-            headers={"Cookie": cookie},
+            headers={"Cookie": cookie, "Origin": "http://localhost:3000"},
         )
         self.assertEqual(connected["status"], "200 OK")
+        self.assertEqual(connected["headers"]["Access-Control-Allow-Origin"], "http://localhost:3000")
+        self.assertEqual(connected["headers"]["Access-Control-Allow-Credentials"], "true")
         self.assertTrue(payload["selection_token"].startswith("tpl_"))
 
         other_session = app._sessions.put(Session("other-user", "other@example.test", "other-access", None, 9_999_999_999, 0))
@@ -137,6 +158,57 @@ class AuthBoundaryTest(unittest.TestCase):
         protected, payload = invoke(app, "/api/template/fields")
         self.assertEqual(protected["status"], "401 Unauthorized")
         self.assertEqual(payload["error"]["code"], "authentication_required")
+
+    def test_authenticated_template_provider_uses_server_side_user_credentials(self):
+        provider = GoogleDocumentProvider("/run/secrets/service-account.json", credentials=object())
+        app = create_app(load_config(auth_values()).config, provider)
+        session_id = app._sessions.put(Session("user-123", None, "synthetic-access", "synthetic-refresh", 9_999_999_999, 0))
+
+        user_provider = app._provider_for({"HTTP_COOKIE": f"invoice_session={session_id}"})
+
+        self.assertEqual(user_provider.credential_reference, "oauth://signed-in-user")
+        self.assertEqual(user_provider._credentials.token, "synthetic-access")
+        self.assertEqual(user_provider._credentials.refresh_token, "synthetic-refresh")
+
+    def test_authenticated_connect_reads_google_template_and_returns_sanitized_fields(self):
+        drive = Mock()
+        drive.files.return_value.get.return_value.execute.return_value = {
+            "id": "authorized-template-id",
+            "name": "Synthetic invoice template",
+            "mimeType": "application/vnd.google-apps.document",
+            "trashed": False,
+        }
+        docs = Mock()
+        docs.documents.return_value.get.return_value.execute.return_value = {
+            "title": "Synthetic invoice template",
+            "body": {"content": [{"paragraph": {"elements": [{"textRun": {"content": "{{days_worked}}"}}]}}]},
+        }
+        user_provider = GoogleDocumentProvider(
+            "oauth://signed-in-user",
+            drive_service=drive,
+            docs_service=docs,
+            credentials=object(),
+        )
+        app = create_app(load_config(auth_values()).config, GoogleDocumentProvider("/run/secrets/service-account.json", credentials=object()))
+        session_id = app._sessions.put(Session("user-123", None, "synthetic-access", "synthetic-refresh", 9_999_999_999, 0))
+
+        with patch.object(GoogleDocumentProvider, "for_user_session", return_value=user_provider) as factory:
+            status, payload = invoke(
+                app,
+                "/api/template/connect",
+                method="POST",
+                body=json.dumps({"url": "https://docs.google.com/document/d/authorized-template-id/edit"}).encode(),
+                headers={"Cookie": f"invoice_session={session_id}"},
+            )
+
+        self.assertEqual(status["status"], "200 OK")
+        self.assertEqual(payload["template"]["name"], "Synthetic invoice template")
+        self.assertNotIn("authorized-template-id", json.dumps(payload))
+        self.assertNotIn("{{days_worked}}", json.dumps(payload))
+        self.assertEqual(factory.call_args.kwargs["access_token"], "synthetic-access")
+        drive.files.return_value.get.assert_called_once_with(
+            fileId="authorized-template-id", fields="id,name,mimeType,trashed,version", supportsAllDrives=True
+        )
 
     def test_denied_consent_explains_test_user_configuration_without_echoing_provider_data(self):
         app = self.configured_app(lambda request, timeout: FakeResponse({}))
@@ -195,3 +267,15 @@ class AuthBoundaryTest(unittest.TestCase):
         self.assertTrue(payload["authenticated"])
         self.assertEqual(len(calls), 1)
         self.assertEqual(app._sessions.get(session_id).access_token, "refreshed-access")
+
+    def test_session_cookie_security_and_rotation_contract(self):
+        store = SessionStore("synthetic-session-secret")
+        development = store.cookie_header("session-one", secure=False)
+        production = store.cookie_header("session-two", secure=True)
+
+        self.assertIn("Max-Age=3600", development)
+        self.assertIn("HttpOnly", development)
+        self.assertIn("SameSite=Lax", development)
+        self.assertNotIn("Secure", development)
+        self.assertIn("Secure", production)
+        self.assertNotEqual(store.put(Session("user", None, "access", None, 9_999_999_999, 0)), store.put(Session("user", None, "access", None, 9_999_999_999, 0)))

@@ -71,8 +71,16 @@ class TemplateConnectTest(unittest.TestCase):
                 self.assertEqual(payload["error"]["code"], "invalid_template_url")
                 self.assertNotIn(url, json.dumps(payload))
 
-        denied = self.configured_app(FixtureDocumentProvider(failures={"read_template": "permission_denied"}))
-        status, payload = self.connect(denied, "https://docs.google.com/document/d/fixture-template/edit")
-        self.assertEqual(status["status"], "502 Bad Gateway")
-        self.assertEqual(payload["error"]["code"], "template_unavailable")
-        self.assertNotIn("permission_denied", json.dumps(payload))
+        cases = {
+            "permission_denied": ("403 Forbidden", "template_access_denied"),
+            "template_not_found": ("404 Not Found", "template_not_found"),
+            "credentials_invalid": ("401 Unauthorized", "reauthorization_required"),
+            "unavailable": ("503 Service Unavailable", "provider_unavailable"),
+            "timeout": ("504 Gateway Timeout", "provider_timeout"),
+        }
+        for failure, expected in cases.items():
+            with self.subTest(failure=failure):
+                denied = self.configured_app(FixtureDocumentProvider(failures={"read_template": failure}))
+                status, payload = self.connect(denied, "https://docs.google.com/document/d/fixture-template/edit")
+                self.assertEqual((status["status"], payload["error"]["code"]), expected)
+                self.assertNotIn("sensitive provider payload", json.dumps(payload))

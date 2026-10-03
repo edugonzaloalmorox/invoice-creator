@@ -63,6 +63,21 @@ test("template connection sends only the link and returns the sanitized response
   assert.equal(result.selection_token, "tpl_opaque");
 });
 
+test("template connection shows account authorization and reauthorization action", () => {
+  let rendered = "";
+  const form = { addEventListener: () => {} };
+  const input = { addEventListener: () => {} };
+  const root = {
+    set innerHTML(value) { rendered = value; },
+    querySelector(selector) { return selector === "form" ? form : input; },
+  };
+  renderTemplateConnection(root, { user: { email: "synthetic@example.test" } });
+  assert.match(rendered, /synthetic@example\.test/);
+  assert.match(rendered, /Google Drive access is authorized/);
+  assert.match(rendered, /Re-authorize Google Drive/);
+  assert.match(rendered, /auth\/google/);
+});
+
 test("session and logout requests carry browser credentials", async () => {
   let sessionRequest;
   const session = await requestSession({

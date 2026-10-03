@@ -152,9 +152,11 @@ The repository has automated coverage for validation/calculation, field
 detection, preview and generation, frontend behavior, provider failure paths,
 cleanup, CORS, request limits, rate limiting, and sensitive-data handling.
 
+Authentication and authorization are implemented when the OAuth configuration is
+present; durable encrypted token/session persistence remains follow-up #TASK-24.
+
 The following are intentionally outside the current MVP:
 
-- User authentication and authorization (#TASK-18)
 - Credential rotation and incident operations (#TASK-19)
 - Load/penetration testing and platform provisioning (#TASK-20 and #TASK-21)
 
