@@ -41,7 +41,7 @@ To use a real Google template locally, copy [`.env.example`](.env.example) to
 service-account JSON file, and then run `make run`. `.env` is ignored by Git;
 never commit the JSON file or its contents.
 
-Then open [http://127.0.0.1:3000](http://127.0.0.1:3000). `make run` starts the
+Then open [http://localhost:3000](http://localhost:3000). `make run` starts the
 backend on `http://localhost:8000` and serves the static frontend on port 3000.
 It stops existing processes listening on those two development ports first.
 
@@ -56,7 +56,7 @@ The backend can also be started directly after exporting the required settings:
 
 ```sh
 export INVOICE_ENVIRONMENT=development
-export INVOICE_FRONTEND_ORIGIN=http://127.0.0.1:3000
+export INVOICE_FRONTEND_ORIGIN=http://localhost:3000
 export GOOGLE_CREDENTIALS_REFERENCE=fixture://local
 export GOOGLE_TEMPLATE_ID=fixture-template
 export INVOICE_MAX_REQUEST_BYTES=1048576

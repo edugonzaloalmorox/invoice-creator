@@ -17,7 +17,7 @@ project and records only its non-secret project identifier:
    trailing-slash behavior. The local placeholder is:
    `http://localhost:8000/auth/google/callback`.
 6. Register the browser origin used by the deployment. The local placeholder is:
-   `http://127.0.0.1:3000`.
+   `http://localhost:3000`.
 
 The client ID, client secret, session secret, and OAuth encryption material are
 secret-managed configuration. They must not be placed in source control, URLs,
