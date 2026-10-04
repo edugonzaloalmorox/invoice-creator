@@ -1,5 +1,6 @@
 """Development-only WSGI entry point for the invoice filler backend."""
 
+import logging
 from wsgiref.simple_server import WSGIRequestHandler, make_server
 
 from .app.main import app
@@ -26,6 +27,10 @@ class RedactingRequestHandler(WSGIRequestHandler):
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
     with make_server("127.0.0.1", 8000, app, handler_class=RedactingRequestHandler) as server:
         print("invoice-filler backend listening on http://127.0.0.1:8000")
         server.serve_forever()

@@ -169,9 +169,13 @@ class GoogleProviderTest(unittest.TestCase):
                 drive.files_api.get = lambda **kwargs: (_ for _ in ()).throw(error)
                 provider = GoogleDocumentProvider("/run/secrets/google.json", drive_service=drive, docs_service=FakeDocs({}))
 
-                with self.assertRaises(ProviderError) as context:
-                    provider.read_template("real-template-id")
+                with self.assertLogs("backend.app.google_provider", level="ERROR") as logs:
+                    with self.assertRaises(ProviderError) as context:
+                        provider.read_template("real-template-id")
                 self.assertEqual(context.exception.code, code)
+                self.assertIn("operation=read_template", "\n".join(logs.output))
+                self.assertIn(f"http_status={status}", "\n".join(logs.output))
+                self.assertNotIn("sensitive provider document payload", "\n".join(logs.output))
                 self.assertNotIn("sensitive", str(context.exception))
 
     def test_missing_temporary_document_is_distinguished_from_missing_template(self):

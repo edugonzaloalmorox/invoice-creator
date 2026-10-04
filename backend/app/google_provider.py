@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from collections.abc import Callable, Mapping
 from pathlib import Path
@@ -28,6 +29,9 @@ GOOGLE_SCOPES = (
 GOOGLE_DOC_MIME_TYPE = "application/vnd.google-apps.document"
 FIELD_MARKER = re.compile(r"\{\{([a-z][a-z0-9_]*)\}\}")
 GOOGLE_DOCUMENT_ID = re.compile(r"^[A-Za-z0-9_-]+$")
+
+
+logger = logging.getLogger(__name__)
 
 
 def google_document_id(document_url: str) -> str | None:
@@ -74,6 +78,14 @@ def load_service_account_credentials(reference: str):
 
 def _provider_error(operation: str, error: Exception) -> ProviderError:
     """Map Google/client failures to stable messages without provider payloads."""
+
+    status = getattr(getattr(error, "resp", None), "status", None)
+    logger.error(
+        "google_provider_failure operation=%s exception_type=%s http_status=%s",
+        operation,
+        type(error).__name__,
+        status if isinstance(status, int) else "none",
+    )
 
     if isinstance(error, HttpError):
         status = getattr(error.resp, "status", None)
