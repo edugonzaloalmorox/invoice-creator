@@ -70,11 +70,20 @@ class GenerateEndpointTest(unittest.TestCase):
                 self.assertNotIn(b"%PDF", body)
                 self.assertEqual(provider.calls[-1][0], "delete_document")
 
+    def test_export_not_found_is_classified_as_temporary_document_failure(self):
+        provider = FixtureDocumentProvider(failures={"export_pdf": "document_not_found"})
+        status, body = call_raw(configured_app(provider), invoice_body())
+        payload = json.loads(body)
+        self.assertEqual(status["status"], "502 Bad Gateway")
+        self.assertEqual(payload["error"]["code"], "temporary_document_not_found")
+        self.assertIn("Try generating again", payload["error"]["message"])
+        self.assertEqual([operation for operation, _ in provider.calls], ["copy_document", "replace_values", "export_pdf", "delete_document"])
+
     def test_cleanup_failure_is_not_a_successful_pdf(self):
         provider = FixtureDocumentProvider(failures={"delete_document": "cleanup_failed"})
         status, body = call_raw(configured_app(provider), invoice_body())
         self.assertEqual(status["status"], "502 Bad Gateway")
-        self.assertEqual(json.loads(body)["error"]["code"], "provider_error")
+        self.assertEqual(json.loads(body)["error"]["code"], "cleanup_failed")
 
     def test_response_limit_rejects_large_pdf_before_return_and_cleans_up(self):
         provider = FixtureDocumentProvider()

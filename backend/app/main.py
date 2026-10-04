@@ -486,12 +486,31 @@ class Application:
                     if primary_error is None:
                         primary_error = cleanup_error
         if primary_error is not None:
-            status = "504 Gateway Timeout" if primary_error.retryable else "502 Bad Gateway"
-            code = "provider_timeout" if primary_error.retryable else "provider_error"
-            return _error_response(start_response, status, code, "The document provider could not complete the request.", request_id)
+            status, code, message = self._generation_provider_error(primary_error)
+            return _error_response(start_response, status, code, message, request_id)
         filename = f"invoice-{invoice.service_start_date}.pdf"
         start_response("200 OK", [("Content-Type", "application/pdf"), ("Content-Length", str(len(pdf))), ("Content-Disposition", f'attachment; filename="{filename}"'), ("Cache-Control", "no-store"), ("X-Request-ID", request_id)])
         return [pdf]
+
+    @staticmethod
+    def _generation_provider_error(error: ProviderError) -> tuple[str, str, str]:
+        """Expose stable, actionable generation failures without provider details."""
+
+        if error.code == "credentials_invalid":
+            return "401 Unauthorized", "reauthorization_required", "Re-authorize Google access, then try again."
+        if error.code == "permission_denied":
+            return "403 Forbidden", "document_access_denied", "Google access to the invoice document was denied. Re-authorize and try again."
+        if error.code == "timeout" or error.retryable:
+            return "504 Gateway Timeout", "provider_timeout", "Google Docs took too long to respond. Try again."
+        if error.operation == "export_pdf" and error.code in {"document_not_found", "template_not_found"}:
+            return "502 Bad Gateway", "temporary_document_not_found", "The temporary invoice document could not be exported. Try generating again."
+        if error.operation == "replace_values" and error.code == "document_not_found":
+            return "502 Bad Gateway", "temporary_document_not_found", "The temporary invoice document disappeared. Try generating again."
+        if error.operation == "delete_document":
+            return "502 Bad Gateway", "cleanup_failed", "The temporary invoice document could not be cleaned up. Try generating again."
+        if error.operation == "copy_document" and error.code == "template_not_found":
+            return "404 Not Found", "template_not_found", "The Google Docs template was not found. Reconnect the template and try again."
+        return "502 Bad Gateway", "provider_error", "The document provider could not complete the request. Try again."
 
     def _template_fields(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
         if not self.config_result.ready:

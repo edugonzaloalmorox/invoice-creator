@@ -82,7 +82,8 @@ def _provider_error(operation: str, error: Exception) -> ProviderError:
         if status == 403:
             return ProviderError(operation, "permission_denied")
         if status == 404:
-            return ProviderError(operation, "template_not_found")
+            code = "template_not_found" if operation in {"read_template", "copy_document"} else "document_not_found"
+            return ProviderError(operation, code)
         if status == 429 or status is not None and status >= 500:
             return ProviderError(operation, "provider_unavailable", retryable=True)
     if isinstance(error, (TimeoutError, google.auth.exceptions.TransportError)):

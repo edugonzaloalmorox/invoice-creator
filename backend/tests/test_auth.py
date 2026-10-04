@@ -17,6 +17,8 @@ from backend.app.google_provider import GoogleDocumentProvider
 from backend.app.main import create_app
 from backend.app.provider import FixtureDocumentProvider
 from backend.tests.test_configuration import configured_values
+from backend.tests.test_preview import invoice_body
+from backend.tests.test_generate import call_raw
 
 
 class FakeResponse:
@@ -169,6 +171,35 @@ class AuthBoundaryTest(unittest.TestCase):
         self.assertEqual(user_provider.credential_reference, "oauth://signed-in-user")
         self.assertEqual(user_provider._credentials.token, "synthetic-access")
         self.assertEqual(user_provider._credentials.refresh_token, "synthetic-refresh")
+
+    def test_authenticated_preview_and_generation_use_one_temporary_document(self):
+        provider = FixtureDocumentProvider()
+        app = create_app(load_config(auth_values()).config, provider)
+        session_id = app._sessions.put(Session("user-123", "synthetic@example.test", "synthetic-access", None, 9_999_999_999, 0))
+        cookie = f"invoice_session={session_id}"
+        headers = {"Cookie": cookie}
+
+        connected, connection = invoke(
+            app,
+            "/api/template/connect",
+            method="POST",
+            body=json.dumps({"url": "https://docs.google.com/document/d/fixture-template/edit"}).encode(),
+            headers=headers,
+        )
+        self.assertEqual(connected["status"], "200 OK")
+        token = connection["selection_token"]
+        headers["X-Template-Selection"] = token
+
+        preview, _ = invoke(app, "/api/invoices/preview", method="POST", body=invoice_body(), headers=headers)
+        self.assertEqual(preview["status"], "200 OK")
+        generated, body = call_raw(app, invoice_body(), headers=headers)
+        self.assertEqual(generated["status"], "200 OK")
+        self.assertTrue(body.startswith(b"%PDF"))
+        generation_calls = provider.calls[-4:]
+        self.assertEqual([operation for operation, _ in generation_calls], ["copy_document", "replace_values", "export_pdf", "delete_document"])
+        self.assertEqual(generation_calls[0][1], "fixture-template")
+        self.assertEqual({document_id for _, document_id in generation_calls[1:]}, {"fixture-copy-1"})
+        self.assertNotIn("synthetic-access", body.decode("latin1"))
 
     def test_authenticated_connect_reads_google_template_and_returns_sanitized_fields(self):
         drive = Mock()

@@ -195,6 +195,27 @@ test("generation downloads only a successful PDF with the safe server filename",
   assert.equal(clicked, true);
 });
 
+test("generation sends exactly one credentialed POST with the selected template", async () => {
+  let calls = 0;
+  let request;
+  const response = {
+    ok: true,
+    headers: { get: (name) => name === "content-type" ? "application/pdf" : 'attachment; filename="invoice.pdf"' },
+    blob: async () => new Blob(["pdf"]),
+  };
+  await requestGeneration({ currency: "EUR" }, {
+    templateToken: "tpl_opaque",
+    fetchImpl: async (url, options) => { calls += 1; request = { url, options }; return response; },
+    urlImpl: { createObjectURL: () => "blob:fixture", revokeObjectURL: () => {} },
+    documentImpl: { createElement: () => ({ click() {}, set href(_) {}, set download(_) {} }) },
+  });
+  assert.equal(calls, 1);
+  assert.equal(request.url, "http://localhost:8000/api/invoices/generate");
+  assert.equal(request.options.method, "POST");
+  assert.equal(request.options.credentials, "include");
+  assert.equal(request.options.headers["X-Template-Selection"], "tpl_opaque");
+});
+
 test("non-PDF success responses fail without downloading", async () => {
   await assert.rejects(() => requestGeneration({}, {
     fetchImpl: async () => ({ ok: true, headers: { get: () => "application/json" } }),

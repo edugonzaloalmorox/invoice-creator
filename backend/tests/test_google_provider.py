@@ -8,6 +8,7 @@ from googleapiclient.errors import HttpError
 from backend.app.google_provider import (
     GOOGLE_DOC_MIME_TYPE,
     GoogleDocumentProvider,
+    _provider_error,
     google_document_id,
     load_service_account_credentials,
     normalize_google_document,
@@ -172,6 +173,12 @@ class GoogleProviderTest(unittest.TestCase):
                     provider.read_template("real-template-id")
                 self.assertEqual(context.exception.code, code)
                 self.assertNotIn("sensitive", str(context.exception))
+
+    def test_missing_temporary_document_is_distinguished_from_missing_template(self):
+        response = SimpleNamespace(status=404, reason="provider error")
+        error = HttpError(response, b"sensitive provider document payload")
+        self.assertEqual(_provider_error("export_pdf", error).code, "document_not_found")
+        self.assertEqual(_provider_error("read_template", error).code, "template_not_found")
 
     def test_credential_reference_never_treats_secret_manager_uri_as_file(self):
         with self.assertRaises(ProviderError) as context:
