@@ -45,6 +45,7 @@ output { display: block; margin: 1rem 0; padding: .85rem 1rem; border-radius: 8p
 .template-account { margin: 0 0 1rem; color: var(--muted); font-size: .92rem; }
 .link-button { border: 0; padding: 0; color: var(--blue); background: transparent; text-decoration: underline; cursor: pointer; }
 .form-message { margin: 1rem 0 0; color: var(--muted); font-size: .9rem; }
+.download-link { display: inline-block; margin-top: .7rem; color: var(--blue); font-weight: 750; }
 .service-error, .loading { padding: 2rem; }
 .service-error p:not(.eyebrow) { color: var(--muted); }
 .privacy-note { margin: 1.2rem 0 0; text-align: center; }

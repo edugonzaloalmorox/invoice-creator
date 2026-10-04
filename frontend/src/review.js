@@ -86,7 +86,7 @@ export function createFieldReviewController({ loadFields, preview }) {
   };
 }
 
-export async function requestGeneration(values, { fetchImpl = globalThis.fetch, urlImpl = globalThis.URL, documentImpl = globalThis.document, templateToken } = {}) {
+export async function requestGeneration(values, { fetchImpl = globalThis.fetch, urlImpl = globalThis.URL, documentImpl = globalThis.document, setTimeoutImpl = globalThis.setTimeout, templateToken } = {}) {
   const response = await fetchImpl(`${apiOrigin()}/api/invoices/generate`, {
     method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(templateToken ? { "X-Template-Selection": templateToken } : {}) }, body: JSON.stringify(values),
   });
@@ -111,13 +111,16 @@ export async function requestGeneration(values, { fetchImpl = globalThis.fetch, 
   const link = documentImpl.createElement("a");
   link.href = url;
   link.download = filename;
-  if (link.style) link.style.display = "none";
+  link.textContent = "Download PDF";
+  link.className = "download-link";
   documentImpl.body?.appendChild(link);
   try {
     link.click();
   } finally {
-    link.remove?.();
-    urlImpl.revokeObjectURL(url);
+    // Keep the link available for browsers that block downloads started after
+    // an awaited fetch. The user can click it normally in that case.
+    const cleanupTimer = setTimeoutImpl(() => urlImpl.revokeObjectURL(url), 60_000);
+    cleanupTimer?.unref?.();
   }
   return { filename };
 }

@@ -27,13 +27,13 @@ export function createInvoiceFormController({ preview } = {}) {
   return {
     getState,
     subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); },
-    setValue(name, value) {
+    setValue(name, value, { notify: shouldNotify = true } = {}) {
       if (!(name in state.values) || state.status === "pending") return;
       state.values[name] = value;
       state.errors = { ...state.errors, [name]: undefined };
       state.preview = null;
       state.status = "idle";
-      notify();
+      if (shouldNotify) notify();
     },
     async submit() {
       if (state.status === "pending") return getState();
@@ -153,7 +153,12 @@ export function renderInvoiceForm(root, { preview = requestPreview } = {}) {
     root.innerHTML = `<form aria-labelledby="invoice-heading"><h1 id="invoice-heading">Create invoice</h1><p>Enter your invoice details to review the calculated total.</p><fieldset><legend>Invoice details</legend>${invoiceFields.map((field) => fieldMarkup(field, state)).join("")}</fieldset>${formError ? `<p class="error" role="alert">${escapeHtml(formError)}</p>` : ""}${total ? `<output aria-live="polite">Total: ${escapeHtml(total)} ${escapeHtml(state.preview.calculation.currency)}</output>` : ""}<div class="actions"><button type="submit" ${pending ? "disabled" : ""}>${pending ? "Checking…" : "Preview invoice"}</button><button type="button" disabled aria-disabled="true">Generate PDF</button></div></form>`;
     const form = root.querySelector("form");
     form.addEventListener("submit", (event) => { event.preventDefault(); controller.submit(); });
-    invoiceFields.forEach(({ name }) => form.elements[name].addEventListener("input", (event) => controller.setValue(name, event.target.value)));
+    invoiceFields.forEach(({ name }) => {
+      const input = form.elements[name];
+      // Keep the active input node in place while typing. Re-rendering on every
+      // keystroke replaces the node and makes multi-character entry impossible.
+      input.addEventListener("input", (event) => controller.setValue(name, event.target.value, { notify: false }));
+    });
   }
   controller.subscribe(render);
   render(controller.getState());

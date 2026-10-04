@@ -1,5 +1,5 @@
-import { apiOrigin, renderInvoiceForm, renderTemplateConnection, requestLogout, requestPreview, requestSession, requestTemplate } from "./app.js";
-import { requestGeneration } from "./review.js";
+import { apiOrigin, renderInvoiceForm, renderTemplateConnection, requestLogout, requestPreview, requestSession, requestTemplate } from "./app.js?v=20261004-2";
+import { requestGeneration } from "./review.js?v=20261004-2";
 
 const root = document.querySelector("#app");
 
