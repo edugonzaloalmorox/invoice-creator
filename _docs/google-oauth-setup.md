@@ -54,14 +54,14 @@ GOOGLE_CLOUD_PROJECT_ID=<project-id>
 GOOGLE_OAUTH_CLIENT_ID=<web-client-id>
 GOOGLE_OAUTH_CLIENT_SECRET=<secret-manager-value>
 GOOGLE_OAUTH_REDIRECT_URI=<exact-registered-callback>
-GOOGLE_OAUTH_SCOPES=openid,email,profile,https://www.googleapis.com/auth/drive.file
+GOOGLE_OAUTH_SCOPES=openid,email,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/drive.file
 GOOGLE_PICKER_API_KEY=<restricted-browser-key-if-picker-is-enabled>
 SESSION_SECRET=<secret-manager-value>
 OAUTH_TOKEN_ENCRYPTION_KEY=<secret-manager-value-for-follow-up-24>
 ```
 
-The current application validates the OAuth client, callback, scopes, and session
-secret. Durable encrypted token storage is intentionally separate work under
+The current application validates the OAuth client, callback, required Docs/Drive
+scopes, and session secret. Durable encrypted token storage is intentionally separate work under
 #TASK-24; until that is deployed, sessions are process-local and restarting the
 backend requires sign-in again.
 

@@ -219,7 +219,7 @@ class GoogleProviderTest(unittest.TestCase):
             refresh_token="synthetic-refresh",
             client_id="synthetic-client",
             client_secret="synthetic-secret",
-            scopes=("openid", "https://www.googleapis.com/auth/drive.file"),
+            scopes=("openid", "email", "https://www.googleapis.com/auth/documents", "https://www.googleapis.com/auth/drive.file"),
         )
         self.assertEqual(provider.credential_reference, "oauth://signed-in-user")
         self.assertEqual(provider._credentials.token, "synthetic-access")

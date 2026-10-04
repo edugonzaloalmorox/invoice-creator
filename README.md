@@ -122,7 +122,7 @@ defaults in [`Makefile`](Makefile) configure the fixture provider.
 | `GOOGLE_OAUTH_CLIENT_ID` | Google OAuth web client ID; backend configuration only |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | Secret-managed OAuth client secret; never logged |
 | `GOOGLE_OAUTH_REDIRECT_URI` | Exact registered callback URL |
-| `GOOGLE_OAUTH_SCOPES` | Space-separated scopes; must include `openid` when enabled |
+| `GOOGLE_OAUTH_SCOPES` | Space-separated `openid`, `email`, Docs, and Drive-file scopes when enabled |
 | `SESSION_SECRET` | Secret used for process-local session configuration |
 
 Production requires an HTTPS frontend origin. Readiness returns `503` when a

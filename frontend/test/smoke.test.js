@@ -221,3 +221,13 @@ test("non-PDF success responses fail without downloading", async () => {
     fetchImpl: async () => ({ ok: true, headers: { get: () => "application/json" } }),
   }), /invalid PDF response/);
 });
+
+test("generation surfaces the backend's safe provider guidance", async () => {
+  await assert.rejects(() => requestGeneration({}, {
+    fetchImpl: async () => ({
+      ok: false,
+      headers: { get: () => "application/json" },
+      json: async () => ({ error: { code: "temporary_document_not_found", message: "Try generating again." } }),
+    }),
+  }), /Try generating again/);
+});

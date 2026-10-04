@@ -92,6 +92,15 @@ export async function requestGeneration(values, { fetchImpl = globalThis.fetch, 
   });
   const contentType = (response.headers?.get?.("content-type") || "").split(";", 1)[0].toLowerCase();
   if (!response.ok || contentType !== "application/pdf") {
+    if (!response.ok) {
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+      throw new Error(payload?.error?.message || "PDF generation failed. Try again.");
+    }
     throw new Error(response.ok ? "The server returned an invalid PDF response." : "PDF generation failed. Try again.");
   }
   const blob = await response.blob();

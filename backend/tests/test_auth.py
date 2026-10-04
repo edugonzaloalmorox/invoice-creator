@@ -55,7 +55,7 @@ def auth_values():
         CONFIG_OAUTH_CLIENT_ID: "client.apps.googleusercontent.com",
         CONFIG_OAUTH_CLIENT_SECRET: "synthetic-client-secret",
         CONFIG_OAUTH_REDIRECT_URI: "http://localhost:8000/auth/google/callback",
-        CONFIG_OAUTH_SCOPES: "openid email https://www.googleapis.com/auth/drive.file",
+        CONFIG_OAUTH_SCOPES: "openid email https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.file",
         CONFIG_SESSION_SECRET: "synthetic-session-secret",
     })
     return values
@@ -69,7 +69,7 @@ class AuthBoundaryTest(unittest.TestCase):
                 "client.apps.googleusercontent.com",
                 "synthetic-client-secret",
                 "http://localhost:8000/auth/google/callback",
-                ("openid", "email", "https://www.googleapis.com/auth/drive.file"),
+                ("openid", "email", "https://www.googleapis.com/auth/documents", "https://www.googleapis.com/auth/drive.file"),
                 "synthetic-session-secret",
             ),
             opener=opener,
@@ -200,6 +200,30 @@ class AuthBoundaryTest(unittest.TestCase):
         self.assertEqual(generation_calls[0][1], "fixture-template")
         self.assertEqual({document_id for _, document_id in generation_calls[1:]}, {"fixture-copy-1"})
         self.assertNotIn("synthetic-access", body.decode("latin1"))
+
+    def test_authenticated_copy_not_found_is_safe_and_stops_before_mutation(self):
+        provider = FixtureDocumentProvider(failures={"copy_document": "template_not_found"})
+        app = create_app(load_config(auth_values()).config, provider)
+        session_id = app._sessions.put(Session("user-123", "synthetic@example.test", "synthetic-access", None, 9_999_999_999, 0))
+        headers = {"Cookie": f"invoice_session={session_id}"}
+
+        connected, connection = invoke(
+            app,
+            "/api/template/connect",
+            method="POST",
+            body=json.dumps({"url": "https://docs.google.com/document/d/fixture-template/edit"}).encode(),
+            headers=headers,
+        )
+        self.assertEqual(connected["status"], "200 OK")
+        headers["X-Template-Selection"] = connection["selection_token"]
+
+        preview, _ = invoke(app, "/api/invoices/preview", method="POST", body=invoice_body(), headers=headers)
+        self.assertEqual(preview["status"], "200 OK")
+        generated, payload = invoke(app, "/api/invoices/generate", method="POST", body=invoice_body(), headers=headers)
+        self.assertEqual(generated["status"], "404 Not Found")
+        self.assertEqual(payload["error"]["code"], "template_not_found")
+        self.assertNotIn("synthetic", json.dumps(payload))
+        self.assertEqual([operation for operation, _ in provider.calls], ["read_template", "copy_document"])
 
     def test_authenticated_connect_reads_google_template_and_returns_sanitized_fields(self):
         drive = Mock()

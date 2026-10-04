@@ -72,7 +72,7 @@ class ConfigurationTest(unittest.TestCase):
             CONFIG_OAUTH_CLIENT_ID: "client.apps.googleusercontent.com",
             CONFIG_OAUTH_CLIENT_SECRET: "synthetic-client-secret",
             CONFIG_OAUTH_REDIRECT_URI: "http://localhost:8000/auth/google/callback",
-            CONFIG_OAUTH_SCOPES: "openid,email,https://www.googleapis.com/auth/drive.file",
+            CONFIG_OAUTH_SCOPES: "openid,email,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/drive.file",
             CONFIG_SESSION_SECRET: "synthetic-session-secret",
         })
         result = load_config(values)
@@ -80,7 +80,7 @@ class ConfigurationTest(unittest.TestCase):
         self.assertTrue(result.config.oauth_configured)
         self.assertEqual(result.config.oauth_scopes[0], "openid")
 
-        values[CONFIG_OAUTH_SCOPES] = "https://www.googleapis.com/auth/drive.file"
+        values[CONFIG_OAUTH_SCOPES] = "openid,email,https://www.googleapis.com/auth/drive.file"
         result = load_config(values)
         self.assertFalse(result.ready)
         self.assertNotIn("synthetic-client-secret", " ".join(result.errors))
@@ -91,7 +91,7 @@ class ConfigurationTest(unittest.TestCase):
             CONFIG_OAUTH_CLIENT_ID: '"client.apps.googleusercontent.com"',
             CONFIG_OAUTH_CLIENT_SECRET: '"synthetic-client-secret"',
             CONFIG_OAUTH_REDIRECT_URI: '"http://localhost:8000/auth/google/callback"',
-            CONFIG_OAUTH_SCOPES: '"openid,email,https://www.googleapis.com/auth/drive.file"',
+            CONFIG_OAUTH_SCOPES: '"openid,email,https://www.googleapis.com/auth/documents,https://www.googleapis.com/auth/drive.file"',
             CONFIG_SESSION_SECRET: '"synthetic-session-secret"',
         })
         result = load_config(values)

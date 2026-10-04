@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from io import BytesIO
+import logging
 import secrets
 import time
 from typing import Callable
@@ -16,6 +17,9 @@ from .google_provider import GoogleDocumentProvider, google_document_id
 from .invoice import InvoiceInput, format_total, validate_invoice
 from .metrics import Metrics
 from .provider import FixtureDocumentProvider, ProviderError
+
+
+logger = logging.getLogger(__name__)
 
 
 def project_name() -> str:
@@ -415,7 +419,8 @@ class Application:
                 request_id,
             )
 
-        if self._template_id(environ) is None:
+        template_id = self._template_id(environ)
+        if template_id is None:
             return _error_response(start_response, "400 Bad Request", "template_not_selected", "Select a readable Google Docs template first.", request_id)
 
         payload, parse_error = _read_json_body(environ, self.config_result.config.max_request_bytes)
@@ -449,7 +454,8 @@ class Application:
             return required
         if not self.config_result.ready:
             return _error_response(start_response, "503 Service Unavailable", "service_not_ready", "Service configuration is unavailable.", request_id)
-        if self._template_id(environ) is None:
+        template_id = self._template_id(environ)
+        if template_id is None:
             return _error_response(start_response, "400 Bad Request", "template_not_selected", "Select a readable Google Docs template first.", request_id)
         payload, parse_error = _read_json_body(environ, self.config_result.config.max_request_bytes)
         if parse_error:
@@ -465,23 +471,29 @@ class Application:
         pdf: bytes | None = None
         try:
             provider = self._provider_for(environ)
-            document_id = provider.copy_document(self._template_id(environ), f"invoice-{invoice.service_start_date}")
+            document_id = provider.copy_document(template_id, f"invoice-{invoice.service_start_date}")
+            self._log_provider_operation(request_id, "copy_document", "success")
             replacements = {name: value for name, value in _invoice_payload(invoice).items() if value is not None}
             replacements["total_amount"] = format_total(invoice)
             provider.replace_values(document_id, replacements)
+            self._log_provider_operation(request_id, "replace_values", "success")
             pdf = provider.export_pdf(document_id)
+            self._log_provider_operation(request_id, "export_pdf", "success")
             if not pdf or not pdf.startswith(b"%PDF"):
                 raise ProviderError("export_pdf", "invalid_pdf")
             if len(pdf) > self.config_result.config.max_response_bytes:
                 raise ProviderError("export_pdf", "response_too_large")
         except ProviderError as error:
             primary_error = error
+            self._log_provider_operation(request_id, error.operation, error.code)
             self.metrics.record_event("provider_failure")
         finally:
             if document_id is not None:
                 try:
                     provider.delete_document(document_id)
+                    self._log_provider_operation(request_id, "delete_document", "success")
                 except ProviderError as cleanup_error:
+                    self._log_provider_operation(request_id, cleanup_error.operation, cleanup_error.code)
                     self.metrics.record_event("cleanup_failure")
                     if primary_error is None:
                         primary_error = cleanup_error
@@ -491,6 +503,17 @@ class Application:
         filename = f"invoice-{invoice.service_start_date}.pdf"
         start_response("200 OK", [("Content-Type", "application/pdf"), ("Content-Length", str(len(pdf))), ("Content-Disposition", f'attachment; filename="{filename}"'), ("Cache-Control", "no-store"), ("X-Request-ID", request_id)])
         return [pdf]
+
+    @staticmethod
+    def _log_provider_operation(request_id: str, operation: str, status: str) -> None:
+        """Log only bounded operation metadata; never document or invoice data."""
+
+        logger.info(
+            "provider_operation request_id=%s operation=%s status=%s",
+            request_id,
+            operation,
+            status,
+        )
 
     @staticmethod
     def _generation_provider_error(error: ProviderError) -> tuple[str, str, str]:

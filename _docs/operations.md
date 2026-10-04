@@ -71,8 +71,8 @@ key, real template ID, or document contents in this repository.
 ## Google user sign-in
 
 When user OAuth is enabled, register the exact `GOOGLE_OAUTH_REDIRECT_URI` and
-configure `GOOGLE_OAUTH_SCOPES` with `openid` plus only the approved Drive/Docs
-scope. The browser receives only a short-lived session cookie with a 3600-second
+configure `GOOGLE_OAUTH_SCOPES` with `openid`, `email`, the Docs read scope, and
+the Drive file scope. The browser receives only a short-lived session cookie with a 3600-second
 Max-Age, `HttpOnly`, `SameSite=Lax`, and `Secure` in production; authorization and
 refresh tokens remain server-side. Each successful callback issues a new opaque
 session ID. Access-token refresh rotates only the server-side access token, and

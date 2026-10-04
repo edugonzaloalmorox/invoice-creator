@@ -21,6 +21,13 @@ CONFIG_OAUTH_REDIRECT_URI = "GOOGLE_OAUTH_REDIRECT_URI"
 CONFIG_OAUTH_SCOPES = "GOOGLE_OAUTH_SCOPES"
 CONFIG_SESSION_SECRET = "SESSION_SECRET"
 
+REQUIRED_OAUTH_SCOPES = frozenset({
+    "openid",
+    "email",
+    "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/drive.file",
+})
+
 
 @dataclass(frozen=True, slots=True)
 class AppConfig:
@@ -168,8 +175,10 @@ def load_config(values: dict[str, str] | None = None) -> ConfigLoad:
         if parsed_redirect.scheme not in {"http", "https"} or not parsed_redirect.netloc or parsed_redirect.query or parsed_redirect.fragment:
             errors.append(f"{CONFIG_OAUTH_REDIRECT_URI} must be an HTTP(S) callback URL")
     oauth_scopes = tuple(scope for scope in oauth_values[CONFIG_OAUTH_SCOPES].replace(",", " ").split() if scope)
-    if oauth_values[CONFIG_OAUTH_CLIENT_ID] and "openid" not in oauth_scopes:
-        errors.append(f"{CONFIG_OAUTH_SCOPES} must include openid for user identity")
+    if oauth_values[CONFIG_OAUTH_CLIENT_ID]:
+        missing_scopes = REQUIRED_OAUTH_SCOPES.difference(oauth_scopes)
+        if missing_scopes:
+            errors.append(f"{CONFIG_OAUTH_SCOPES} is missing required Google OAuth scopes")
 
     if errors:
         return ConfigLoad(None, tuple(errors))
