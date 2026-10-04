@@ -786,6 +786,8 @@ details.
 - The failing request was observed as
   `req_RT7xQtw1FoacEmf`; use it only for local log correlation, not as a
   permanent fixture value.
+- Latest local reproduction: browser preflight returns `204`, followed by
+  `POST /api/invoices/generate` returning `404`.
 
 ## Acceptance criteria
 
@@ -810,7 +812,7 @@ details.
 - [ ] Tests prove no invoice values, credentials, Google error payloads, or
   temporary document contents appear in logs or error responses.
 
-## Debug task: Diagnose the remaining generation 404
+### Debug plan: Diagnose the remaining generation 404
 
 - [ ] Capture the generation POST response body and `X-Request-ID` in browser
   DevTools. Confirm whether the error code is `template_not_found` or generic
