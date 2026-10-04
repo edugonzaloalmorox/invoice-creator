@@ -763,3 +763,68 @@ least-privilege user flow for selecting authorized Google Docs templates.
 - Use the narrowest approved scopes and sanitized/disposable Google resources.
 - Follow `_docs/operations.md`, `_docs/api.md`, and
   `_docs/testing-guidelines.md`; do not add dependencies without approval.
+
+## 26. Repair authenticated PDF generation after successful preview
+
+## Goal
+
+When done, an authenticated user can generate and download a PDF after a
+successful template connection and preview. The temporary Google document used
+for generation remains addressable through copy, replacement, export, and
+cleanup, and provider failures are classified without exposing Google response
+details.
+
+## Evidence
+
+- `POST /api/invoices/preview` succeeds with `200`.
+- The browser preflight for generation succeeds with `204`.
+- `POST /api/invoices/generate` fails with `502` and a `not_found` provider
+  response after preview has completed.
+- A generation attempt can also return `405 method_not_allowed` with the
+  message `Only POST is supported.`, indicating that the client or an
+  intermediate retry path is using the wrong HTTP method.
+- The failing request was observed as
+  `req_RT7xQtw1FoacEmf`; use it only for local log correlation, not as a
+  permanent fixture value.
+
+## Acceptance criteria
+
+- [ ] An authenticated end-to-end generation flow succeeds after template
+  connection and preview, returning a non-empty `application/pdf` with the
+  safe filename and `Cache-Control: no-store`.
+- [ ] The frontend sends exactly one credentialed `POST` request to
+  `/api/invoices/generate` with the invoice payload and template-selection
+  header; it never attempts `GET` for generation and does not retry with a
+  different method.
+- [ ] The document ID returned by the copy operation is the ID used for value
+  replacement, PDF export, and cleanup; the master template is never mutated.
+- [ ] Google API responses are inspected per operation so an export or cleanup
+  `404` is not misreported as an unexplained generic failure; the client gets a
+  stable safe error code and actionable retry or reauthorization guidance.
+- [ ] Temporary documents are deleted or trashed after successful generation,
+  provider failure, timeout, invalid/empty PDF, and cleanup failure; cleanup
+  failure remains observable without hiding the primary error.
+- [ ] Regression tests cover authenticated copy, replacement, export, and
+  cleanup using the same temporary document ID, plus a provider `404` during
+  export and a successful PDF response.
+- [ ] Tests prove no invoice values, credentials, Google error payloads, or
+  temporary document contents appear in logs or error responses.
+
+## Out of scope
+
+- Initial OAuth login, callback, and session persistence, covered by #TASK-18
+  and #TASK-24.
+- OAuth client, consent screen, and production scope configuration, covered by
+  #TASK-25.
+- General frontend download behavior and retry UI, covered by #TASK-13.
+- New persistence, background jobs, or a second PDF-generation provider.
+
+## Constraints
+
+- Reuse the provider interface and generation orchestration from #TASK-12 and
+  the authenticated template-selection boundary from #TASK-22.
+- Keep Google API calls and temporary-document cleanup in the backend; never
+  expose document IDs, access tokens, or raw provider errors to the browser.
+- Read `_docs/api.md`, `_docs/operations.md`, and
+  `_docs/testing-guidelines.md`; use synthetic documents/credentials and do
+  not add dependencies without approval.
