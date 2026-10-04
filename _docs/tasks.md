@@ -862,3 +862,38 @@ values.
 - Read `_docs/api.md`, `_docs/operations.md`, and
   `_docs/testing-guidelines.md`; use synthetic documents/credentials and do
   not add dependencies without approval.
+
+## 27. Download the generated invoice PDF
+
+## Goal
+
+When invoice generation succeeds, the browser automatically downloads the
+returned PDF using a safe server-provided filename.
+
+## Acceptance criteria
+
+- [ ] A successful `POST /api/invoices/generate` response downloads as a PDF.
+- [ ] The downloaded filename uses the filename from the server's
+  `Content-Disposition` header, with a safe fallback such as `invoice.pdf`.
+- [ ] The browser does not download a file when generation fails or returns a
+  non-2xx response.
+- [ ] The Generate button is disabled while the request is in progress to
+  prevent duplicate submissions.
+- [ ] Temporary object URLs are revoked after the download starts.
+- [ ] The UI displays a clear error message when generation or download fails.
+- [ ] Frontend tests cover successful download, filename handling, failed
+  generation, and duplicate submissions.
+- [ ] Generated PDF responses continue to use `Cache-Control: no-store`.
+
+## Out of scope
+
+- PDF content, invoice calculations, Google document copying, and temporary
+  document cleanup.
+- Changes to authentication, OAuth scopes, or hosting behavior.
+
+## Constraints
+
+- Reuse the existing frontend request and error-handling patterns.
+- Do not add dependencies without approval.
+- Read `_docs/testing-guidelines.md` and the applicable UI design guidance
+  before implementing frontend changes.
