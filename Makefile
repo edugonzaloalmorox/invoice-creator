@@ -5,19 +5,26 @@
 -include .env
 
 # Local development defaults.
-export INVOICE_ENVIRONMENT ?= development
-export INVOICE_FRONTEND_ORIGIN ?= http://localhost:3000
-export GOOGLE_CREDENTIALS_REFERENCE ?= fixture://local
-export GOOGLE_TEMPLATE_ID ?= fixture-template
-export INVOICE_MAX_REQUEST_BYTES ?= 1048576
-export INVOICE_MAX_RESPONSE_BYTES ?= 5242880
-export GOOGLE_PROVIDER_CONNECT_TIMEOUT_SECONDS ?= 3
-export GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS ?= 10
-export GOOGLE_OAUTH_CLIENT_ID ?=
-export GOOGLE_OAUTH_CLIENT_SECRET ?=
-export GOOGLE_OAUTH_REDIRECT_URI ?=
-export GOOGLE_OAUTH_SCOPES ?=
-export SESSION_SECRET ?=
+INVOICE_ENVIRONMENT ?= development
+INVOICE_FRONTEND_ORIGIN ?= http://localhost:3000
+GOOGLE_CREDENTIALS_REFERENCE ?= fixture://local
+GOOGLE_TEMPLATE_ID ?= fixture-template
+INVOICE_MAX_REQUEST_BYTES ?= 1048576
+INVOICE_MAX_RESPONSE_BYTES ?= 5242880
+GOOGLE_PROVIDER_CONNECT_TIMEOUT_SECONDS ?= 3
+GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS ?= 10
+GOOGLE_OAUTH_CLIENT_ID ?=
+GOOGLE_OAUTH_CLIENT_SECRET ?=
+GOOGLE_OAUTH_REDIRECT_URI ?=
+GOOGLE_OAUTH_SCOPES ?= openid email https://www.googleapis.com/auth/documents https://www.googleapis.com/auth/drive.file
+SESSION_SECRET ?=
+
+export INVOICE_ENVIRONMENT INVOICE_FRONTEND_ORIGIN \
+	GOOGLE_CREDENTIALS_REFERENCE GOOGLE_TEMPLATE_ID \
+	INVOICE_MAX_REQUEST_BYTES INVOICE_MAX_RESPONSE_BYTES \
+	GOOGLE_PROVIDER_CONNECT_TIMEOUT_SECONDS GOOGLE_PROVIDER_READ_TIMEOUT_SECONDS \
+	GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET GOOGLE_OAUTH_REDIRECT_URI \
+	GOOGLE_OAUTH_SCOPES SESSION_SECRET
 
 kill-ports:
 	@for port in 8000 3000; do \
@@ -25,6 +32,15 @@ kill-ports:
 		if [ -n "$$pids" ]; then \
 			echo "Stopping processes on port $$port: $$pids"; \
 			kill -9 $$pids 2>/dev/null || true; \
+		fi; \
+		attempt=0; \
+		while [ "$$attempt" -lt 20 ] && [ -n "$$(lsof -tiTCP:$$port -sTCP:LISTEN 2>/dev/null || true)" ]; do \
+			sleep 0.1; \
+			attempt=$$((attempt + 1)); \
+		done; \
+		if [ -n "$$(lsof -tiTCP:$$port -sTCP:LISTEN 2>/dev/null || true)" ]; then \
+			echo "Port $$port is still in use." >&2; \
+			exit 1; \
 		fi; \
 	done
 
@@ -35,7 +51,7 @@ frontend:
 	npm --prefix frontend start
 
 run: kill-ports
-	uv run python -m backend.run & \
+	INVOICE_ENVIRONMENT=development INVOICE_FRONTEND_ORIGIN=http://localhost:3000 uv run python -m backend.run & \
 	backend_pid=$$!; \
 	cleanup() { kill "$$backend_pid" 2>/dev/null || true; wait "$$backend_pid" 2>/dev/null || true; }; \
 	trap cleanup 0 2 15; \
