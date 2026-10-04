@@ -109,8 +109,16 @@ export async function requestGeneration(values, { fetchImpl = globalThis.fetch, 
   const filename = match?.[1] || "invoice.pdf";
   const url = urlImpl.createObjectURL(blob);
   const link = documentImpl.createElement("a");
-  link.href = url; link.download = filename; link.click();
-  urlImpl.revokeObjectURL(url);
+  link.href = url;
+  link.download = filename;
+  if (link.style) link.style.display = "none";
+  documentImpl.body?.appendChild(link);
+  try {
+    link.click();
+  } finally {
+    link.remove?.();
+    urlImpl.revokeObjectURL(url);
+  }
   return { filename };
 }
 

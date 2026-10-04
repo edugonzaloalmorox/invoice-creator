@@ -181,6 +181,8 @@ test("generation preserves review state on failure and prevents duplicate reques
 
 test("generation downloads only a successful PDF with the safe server filename", async () => {
   let clicked = false;
+  let appended = false;
+  let removed = false;
   const response = {
     ok: true,
     headers: { get: (name) => name === "content-type" ? "application/pdf" : 'attachment; filename="invoice-2026-09-01.pdf"' },
@@ -189,10 +191,15 @@ test("generation downloads only a successful PDF with the safe server filename",
   const result = await requestGeneration({ bank_name: "TEST-BANK" }, {
     fetchImpl: async () => response,
     urlImpl: { createObjectURL: () => "blob:fixture", revokeObjectURL: () => {} },
-    documentImpl: { createElement: () => ({ set href(_) {}, set download(_) { clicked = true; }, click() {} }) },
+    documentImpl: {
+      body: { appendChild: () => { appended = true; } },
+      createElement: () => ({ set href(_) {}, set download(_) { clicked = true; }, click() {}, remove() { removed = true; } }),
+    },
   });
   assert.equal(result.filename, "invoice-2026-09-01.pdf");
   assert.equal(clicked, true);
+  assert.equal(appended, true);
+  assert.equal(removed, true);
 });
 
 test("generation sends exactly one credentialed POST with the selected template", async () => {

@@ -63,7 +63,7 @@ function wireGeneration(templateToken) {
       output.setAttribute("role", "status");
       form.append(output);
     }
-    output.textContent = message;
+    if (output.textContent !== message) output.textContent = message;
   };
   async function generate(event) {
     const button = event.currentTarget;
