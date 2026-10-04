@@ -810,6 +810,38 @@ details.
 - [ ] Tests prove no invoice values, credentials, Google error payloads, or
   temporary document contents appear in logs or error responses.
 
+## Debug task: Diagnose the remaining generation 404
+
+- [ ] Capture the generation POST response body and `X-Request-ID` in browser
+  DevTools. Confirm whether the error code is `template_not_found` or generic
+  `not_found`.
+- [ ] Verify effective runtime configuration without printing secrets:
+  - [ ] OAuth scopes include `openid`, `email`,
+    `https://www.googleapis.com/auth/documents`, and
+    `https://www.googleapis.com/auth/drive.file`.
+  - [ ] The user re-authenticated after any scope change.
+  - [ ] The selected template token resolves to the same template ID used
+    during preview.
+- [ ] Add temporary sanitized operation logging around `copy_document`,
+  `replace_values`, `export_pdf`, and `delete_document`. Log only request ID,
+  operation, provider status, and safe error code; never log document IDs,
+  tokens, invoice values, or Google error payloads.
+- [ ] Reproduce with a disposable Google Doc by connecting the template,
+  previewing an invoice, and generating a PDF. Confirm whether the failure
+  occurs during Drive copy and that replacement/export are not attempted after
+  a copy failure.
+- [ ] Validate Google permissions and OAuth scopes specifically for Drive copy.
+  If copying returns `404` while Docs reading succeeds, fix the OAuth
+  configuration or change the temporary-copy strategy.
+- [ ] Add a regression test with a provider that succeeds on Docs read but
+  returns a Drive `404` on copy, and verify the response is safe and
+  actionable.
+
+Configuration red flag: the local `.env` may contain a standalone
+scope-looking line instead of a `GOOGLE_OAUTH_SCOPES=...` assignment. Verify
+the effective environment used by the running backend without exposing secret
+values.
+
 ## Out of scope
 
 - Initial OAuth login, callback, and session persistence, covered by #TASK-18
