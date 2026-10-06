@@ -3,6 +3,7 @@ import unittest
 from io import BytesIO
 
 from backend.app.config import CONFIG_TEMPLATE_ID, load_config
+from backend.app.field_map import FIELD_MAP
 from backend.app.main import create_app
 from backend.app.provider import FixtureDocumentProvider
 from backend.tests.test_preview import invoice_body
@@ -79,6 +80,22 @@ class GenerateEndpointTest(unittest.TestCase):
             [operation for operation, _ in provider.calls],
             ["copy_document", "replace_values", "verify_replacements", "delete_document"],
         )
+
+    def test_missing_template_field_returns_safe_field_level_guidance(self):
+        fields = {
+            name: (definition.location,)
+            for name, definition in FIELD_MAP.items()
+            if name != "bank_name"
+        }
+        provider = FixtureDocumentProvider(fields=fields)
+        status, body = call_raw(configured_app(provider), invoice_body())
+        payload = json.loads(body)
+
+        self.assertEqual(status["status"], "502 Bad Gateway")
+        self.assertEqual(payload["error"]["code"], "template_field_missing")
+        self.assertEqual(payload["error"]["message"], "Template is missing bank name. Update the template and try again.")
+        self.assertNotIn(b"Example Bank", body)
+        self.assertEqual(provider.calls[-1][0], "delete_document")
 
     def test_fixture_pdf_contains_reviewed_values_and_recalculated_total(self):
         provider = FixtureDocumentProvider()

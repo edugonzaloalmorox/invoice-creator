@@ -27,10 +27,11 @@ class DocumentSnapshot:
 class ProviderError(RuntimeError):
     """Safe provider failure classified by operation and stable error code."""
 
-    def __init__(self, operation: str, code: str, *, retryable: bool = False):
+    def __init__(self, operation: str, code: str, *, retryable: bool = False, field: str | None = None):
         self.operation = operation
         self.code = code
         self.retryable = retryable
+        self.field = field
         super().__init__(f"Document provider {operation} failed: {code}")
 
 
@@ -115,7 +116,7 @@ class FixtureDocumentProvider:
         for field, value in replacements.items():
             locations = document.fields.get(field, ())
             if not locations:
-                raise ProviderError("replace_values", "field_missing")
+                raise ProviderError("replace_values", "field_missing", field=field)
             if len(locations) > 1:
                 raise ProviderError("replace_values", "field_ambiguous")
             values[field] = value

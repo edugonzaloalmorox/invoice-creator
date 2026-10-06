@@ -13,6 +13,7 @@ from urllib.parse import parse_qs, urlparse
 from .auth import AuthError, OAuthClient, OAuthSettings, SessionStore
 from .config import AppConfig, ConfigLoad, load_config
 from .detection import detect_fields
+from .field_map import field_definition
 from .google_provider import GoogleDocumentProvider, google_document_id
 from .invoice import InvoiceInput, format_total, validate_invoice
 from .metrics import Metrics
@@ -531,6 +532,10 @@ class Application:
             return "502 Bad Gateway", "temporary_document_not_found", "The temporary invoice document could not be exported. Try generating again."
         if error.operation == "replace_values" and error.code == "document_not_found":
             return "502 Bad Gateway", "temporary_document_not_found", "The temporary invoice document disappeared. Try generating again."
+        if error.operation == "replace_values" and error.code == "field_missing":
+            definition = field_definition(error.field) if error.field else None
+            label = definition.label.lower() if definition else "required invoice field"
+            return "502 Bad Gateway", "template_field_missing", f"Template is missing {label}. Update the template and try again."
         if error.operation == "verify_replacements":
             return "502 Bad Gateway", "replacement_verification_failed", "The invoice values could not be confirmed in the temporary document. Try again."
         if error.operation == "delete_document":

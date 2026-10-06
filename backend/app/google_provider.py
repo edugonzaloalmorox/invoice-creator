@@ -300,7 +300,7 @@ class GoogleDocumentProvider:
                 # operation remains independently testable; verification will
                 # still reject it before export in the generation workflow.
                 if not locations and current_text:
-                    raise ProviderError("replace_values", "field_missing")
+                    raise ProviderError("replace_values", "field_missing", field=field)
                 if not locations and not current_text:
                     continue
                 if len(locations) != 1:
