@@ -215,7 +215,7 @@ class GoogleProviderTest(unittest.TestCase):
         self.assertEqual(drive.files_api.calls[0]["fileId"], "template")
         self.assertEqual(drive.files_api.calls[-1]["fileId"], copy_id)
         self.assertEqual(docs.documents_api.calls[0]["documentId"], copy_id)
-        self.assertEqual(docs.documents_api.calls[0]["body"]["requests"][0]["replaceAllText"]["replaceText"], "TEST-BANK")
+        self.assertEqual(docs.documents_api.calls[1]["body"]["requests"][0]["replaceAllText"]["replaceText"], "TEST-BANK")
 
     def test_user_session_provider_uses_oauth_credentials_not_service_account_path(self):
         provider = GoogleDocumentProvider.for_user_session(

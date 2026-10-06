@@ -59,8 +59,8 @@ class TemplateConnectTest(unittest.TestCase):
         self.assertEqual(status["status"], "200 OK")
         self.assertTrue(body.startswith(b"%PDF"))
         self.assertEqual(provider.calls[0], ("read_template", "fixture-template"))
-        self.assertEqual(provider.calls[-4][0], "copy_document")
-        self.assertEqual(provider.calls[-4][1], "fixture-template")
+        self.assertEqual(provider.calls[-5][0], "copy_document")
+        self.assertEqual(provider.calls[-5][1], "fixture-template")
 
     def test_invalid_url_and_provider_errors_are_safe(self):
         app = self.configured_app()

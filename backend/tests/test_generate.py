@@ -48,7 +48,7 @@ class GenerateEndpointTest(unittest.TestCase):
         self.assertEqual(status["headers"]["Cache-Control"], "no-store")
         self.assertEqual(status["headers"]["Content-Disposition"], 'attachment; filename="invoice-2026-09-01.pdf"')
         self.assertTrue(body.startswith(b"%PDF"))
-        self.assertEqual([operation for operation, _ in provider.calls], ["copy_document", "replace_values", "export_pdf", "delete_document"])
+        self.assertEqual([operation for operation, _ in provider.calls], ["copy_document", "replace_values", "verify_replacements", "export_pdf", "delete_document"])
 
     def test_validation_failure_does_not_call_provider(self):
         provider = FixtureDocumentProvider()
@@ -70,6 +70,28 @@ class GenerateEndpointTest(unittest.TestCase):
                 self.assertNotIn(b"%PDF", body)
                 self.assertEqual(provider.calls[-1][0], "delete_document")
 
+    def test_verification_failure_is_safe_and_happens_before_export(self):
+        provider = FixtureDocumentProvider(failures={"verify_replacements": "replacement_not_applied"})
+        status, body = call_raw(configured_app(provider), invoice_body())
+        self.assertEqual(status["status"], "502 Bad Gateway")
+        self.assertEqual(json.loads(body)["error"]["code"], "replacement_verification_failed")
+        self.assertEqual(
+            [operation for operation, _ in provider.calls],
+            ["copy_document", "replace_values", "verify_replacements", "delete_document"],
+        )
+
+    def test_fixture_pdf_contains_reviewed_values_and_recalculated_total(self):
+        provider = FixtureDocumentProvider()
+        values = json.loads(invoice_body())
+        values["bank_name"] = "Edited Test Bank"
+        status, body = call_raw(configured_app(provider), json.dumps(values).encode())
+        self.assertEqual(status["status"], "200 OK")
+        self.assertIn(b"bank_name=Edited Test Bank", body)
+        self.assertNotIn(b"bank_name=Example Bank", body)
+        self.assertIn(b"iban_or_account_number=TEST-IBAN-0001", body)
+        self.assertIn(b"total_amount=1200.00", body)
+        self.assertNotIn(b"stale", body.lower())
+
     def test_export_not_found_is_classified_as_temporary_document_failure(self):
         provider = FixtureDocumentProvider(failures={"export_pdf": "document_not_found"})
         status, body = call_raw(configured_app(provider), invoice_body())
@@ -77,7 +99,7 @@ class GenerateEndpointTest(unittest.TestCase):
         self.assertEqual(status["status"], "502 Bad Gateway")
         self.assertEqual(payload["error"]["code"], "temporary_document_not_found")
         self.assertIn("Try generating again", payload["error"]["message"])
-        self.assertEqual([operation for operation, _ in provider.calls], ["copy_document", "replace_values", "export_pdf", "delete_document"])
+        self.assertEqual([operation for operation, _ in provider.calls], ["copy_document", "replace_values", "verify_replacements", "export_pdf", "delete_document"])
 
     def test_cleanup_failure_is_not_a_successful_pdf(self):
         provider = FixtureDocumentProvider(failures={"delete_document": "cleanup_failed"})

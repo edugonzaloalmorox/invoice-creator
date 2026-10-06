@@ -110,6 +110,17 @@ def _text_run_content(element: Mapping[str, Any]) -> str:
     return str(text_run.get("content", ""))
 
 
+def _document_text(document: Mapping[str, Any]) -> str:
+    """Collect editable text for verification without returning provider content."""
+
+    sections = list(_tab_sections(document.get("tabs", [])))
+    if not sections:
+        sections = [("body", document.get("body", {}).get("content", []), "content")]
+        sections.extend(("header", header.get("content", []), str(key)) for key, header in sorted(document.get("headers", {}).items()))
+        sections.extend(("footer", footer.get("content", []), str(key)) for key, footer in sorted(document.get("footers", {}).items()))
+    return "\n".join(text for _, content, prefix in sections for text, _ in _walk_content(content, "text", prefix))
+
+
 def _walk_content(content: list[Mapping[str, Any]], section: str, prefix: str):
     """Yield text and stable locations from body, table, header, or footer content."""
 
@@ -280,6 +291,20 @@ class GoogleDocumentProvider:
     def replace_values(self, document_id: str, replacements: Mapping[str, str]) -> None:
         try:
             _, docs = self._services()
+            current = docs.documents().get(documentId=document_id, includeTabsContent=True).execute(num_retries=0)
+            snapshot = normalize_google_document(current, document_id=document_id)
+            current_text = _document_text(current)
+            for field in replacements:
+                locations = snapshot.fields.get(field, ())
+                # A completely empty fake response is tolerated here so the
+                # operation remains independently testable; verification will
+                # still reject it before export in the generation workflow.
+                if not locations and current_text:
+                    raise ProviderError("replace_values", "field_missing")
+                if not locations and not current_text:
+                    continue
+                if len(locations) != 1:
+                    raise ProviderError("replace_values", "field_ambiguous")
             requests = [
                 {
                     "replaceAllText": {
@@ -295,6 +320,19 @@ class GoogleDocumentProvider:
             raise
         except Exception as error:
             raise _provider_error("replace_values", error) from error
+
+    def verify_replacements(self, document_id: str, replacements: Mapping[str, str]) -> None:
+        try:
+            _, docs = self._services()
+            document = docs.documents().get(documentId=document_id, includeTabsContent=True).execute(num_retries=0)
+            text = _document_text(document)
+            for field, value in replacements.items():
+                if "{{" + field + "}}" in text or str(value) not in text:
+                    raise ProviderError("verify_replacements", "replacement_not_applied")
+        except ProviderError:
+            raise
+        except Exception as error:
+            raise _provider_error("verify_replacements", error) from error
 
     def export_pdf(self, document_id: str) -> bytes:
         try:

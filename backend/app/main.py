@@ -477,6 +477,8 @@ class Application:
             replacements["total_amount"] = format_total(invoice)
             provider.replace_values(document_id, replacements)
             self._log_provider_operation(request_id, "replace_values", "success")
+            provider.verify_replacements(document_id, replacements)
+            self._log_provider_operation(request_id, "verify_replacements", "success")
             pdf = provider.export_pdf(document_id)
             self._log_provider_operation(request_id, "export_pdf", "success")
             if not pdf or not pdf.startswith(b"%PDF"):
@@ -529,6 +531,8 @@ class Application:
             return "502 Bad Gateway", "temporary_document_not_found", "The temporary invoice document could not be exported. Try generating again."
         if error.operation == "replace_values" and error.code == "document_not_found":
             return "502 Bad Gateway", "temporary_document_not_found", "The temporary invoice document disappeared. Try generating again."
+        if error.operation == "verify_replacements":
+            return "502 Bad Gateway", "replacement_verification_failed", "The invoice values could not be confirmed in the temporary document. Try again."
         if error.operation == "delete_document":
             return "502 Bad Gateway", "cleanup_failed", "The temporary invoice document could not be cleaned up. Try generating again."
         if error.operation == "copy_document" and error.code == "template_not_found":

@@ -195,8 +195,8 @@ class AuthBoundaryTest(unittest.TestCase):
         generated, body = call_raw(app, invoice_body(), headers=headers)
         self.assertEqual(generated["status"], "200 OK")
         self.assertTrue(body.startswith(b"%PDF"))
-        generation_calls = provider.calls[-4:]
-        self.assertEqual([operation for operation, _ in generation_calls], ["copy_document", "replace_values", "export_pdf", "delete_document"])
+        generation_calls = provider.calls[-5:]
+        self.assertEqual([operation for operation, _ in generation_calls], ["copy_document", "replace_values", "verify_replacements", "export_pdf", "delete_document"])
         self.assertEqual(generation_calls[0][1], "fixture-template")
         self.assertEqual({document_id for _, document_id in generation_calls[1:]}, {"fixture-copy-1"})
         self.assertNotIn("synthetic-access", body.decode("latin1"))

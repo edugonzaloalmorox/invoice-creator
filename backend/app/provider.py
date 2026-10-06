@@ -51,6 +51,8 @@ class DocumentProvider(Protocol):
 
     def replace_values(self, document_id: str, replacements: Mapping[str, str]) -> None: ...
 
+    def verify_replacements(self, document_id: str, replacements: Mapping[str, str]) -> None: ...
+
     def export_pdf(self, document_id: str) -> bytes: ...
 
     def delete_document(self, document_id: str) -> None: ...
@@ -119,6 +121,16 @@ class FixtureDocumentProvider:
             values[field] = value
         self._copies[document_id] = DocumentSnapshot(document.document_id, document.title, document.fields, values)
 
+    def verify_replacements(self, document_id: str, replacements: Mapping[str, str]) -> None:
+        self.calls.append(("verify_replacements", document_id))
+        self._check_failure("verify_replacements")
+        document = self._copies.get(document_id)
+        if document is None:
+            raise ProviderError("verify_replacements", "document_not_found")
+        for field, value in replacements.items():
+            if document.values.get(field) != str(value):
+                raise ProviderError("verify_replacements", "replacement_not_applied")
+
     def export_pdf(self, document_id: str) -> bytes:
         self.calls.append(("export_pdf", document_id))
         self._check_failure("export_pdf")
@@ -126,7 +138,8 @@ class FixtureDocumentProvider:
             raise ProviderError("export_pdf", "document_not_found")
         if self._empty_pdf:
             return b""
-        return b"%PDF-1.4\n% fixture invoice\n%%EOF\n"
+        rendered = "\n".join(f"{name}={value}" for name, value in self._copies[document_id].values.items())
+        return (f"%PDF-1.4\n% fixture invoice\n% {rendered}\n%%EOF\n").encode()
 
     def delete_document(self, document_id: str) -> None:
         self.calls.append(("delete_document", document_id))

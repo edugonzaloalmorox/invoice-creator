@@ -32,8 +32,7 @@ class CredentialFreeWorkflowTest(unittest.TestCase):
         generate_status, pdf = call_raw(app, invoice_body())
         self.assertEqual(generate_status["status"], "200 OK")
         self.assertTrue(pdf.startswith(b"%PDF"))
-        self.assertEqual([operation for operation, _ in provider.calls[-4:]], ["copy_document", "replace_values", "export_pdf", "delete_document"])
+        self.assertEqual([operation for operation, _ in provider.calls[-5:]], ["copy_document", "replace_values", "verify_replacements", "export_pdf", "delete_document"])
         self.assertEqual(provider.read_template("fixture-template"), master_before)
         self.assertNotIn("TEST-IBAN-0001", generate_status["headers"])
         self.assertNotIn("TEST-IBAN-0001", generate_status["headers"].get("X-Request-ID", ""))
-

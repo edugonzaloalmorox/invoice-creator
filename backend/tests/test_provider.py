@@ -61,6 +61,21 @@ class FixtureProviderTest(unittest.TestCase):
         self.assertEqual(provider.copy_snapshot(second).values, master_before.values)
         self.assertEqual(provider.read_template("fixture-template"), master_before)
 
+    def test_verification_confirms_values_on_copy_only(self):
+        provider = FixtureDocumentProvider()
+        master_before = provider.read_template("fixture-template")
+        copy_id = provider.copy_document("fixture-template", "temporary")
+        replacements = {"service_start_date": "2026-09-01"}
+        provider.replace_values(copy_id, replacements)
+        provider.verify_replacements(copy_id, replacements)
+        self.assertEqual(provider.read_template("fixture-template"), master_before)
+
+    def test_verification_rejects_unapplied_values(self):
+        provider = FixtureDocumentProvider()
+        copy_id = provider.copy_document("fixture-template", "temporary")
+        with self.assertRaisesRegex(ProviderError, "replacement_not_applied"):
+            provider.verify_replacements(copy_id, {"service_start_date": "2026-09-01"})
+
     def test_cleanup_failure_is_classified_for_orchestration(self):
         provider = FixtureDocumentProvider(failures={"delete_document": "cleanup_failed"})
         copy_id = provider.copy_document("fixture-template", "temporary")

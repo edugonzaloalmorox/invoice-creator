@@ -897,3 +897,63 @@ returned PDF using a safe server-provided filename.
 - Do not add dependencies without approval.
 - Read `_docs/testing-guidelines.md` and the applicable UI design guidance
   before implementing frontend changes.
+
+## 28. Parse DOCX content and apply reviewed invoice values before export
+
+## Goal
+
+When done, the application correctly reads the supported `.docx`-backed Google
+Docs template, maps each reviewed invoice field to its real document location,
+applies the user’s edited values to the temporary copy, and exports a PDF that
+contains those edits rather than the values originally read from Google.
+
+## Acceptance criteria
+
+- [ ] A sanitized `.docx` fixture converted to or represented as a Google Docs
+  document is parsed into the supported body, table, header, footer, paragraph,
+  text-run, and split-run structures without dropping editable text or its
+  location metadata.
+- [ ] Parsing maps every supported field to an unambiguous replacement target;
+  fields split across text runs, adjacent to labels, or inside table cells are
+  replaced without changing unrelated text or formatting.
+- [ ] Values entered or edited in the review flow are passed to replacement by
+  stable field name and are written to the temporary document copy, including
+  the recalculated total; the master template is never modified.
+- [ ] Before export, the provider verifies the temporary document contains the
+  replacement values (by rereading its normalized content or an equivalent
+  provider response) and fails safely if a required value was not applied.
+- [ ] The exported PDF contains the edited invoice and bank values and does not
+  contain the stale values from the source document for the replaced fields.
+- [ ] Missing, duplicated, malformed, unsupported, and ambiguous DOCX structures
+  produce a safe actionable error or review warning; the application never
+  silently exports an unedited document as a successful invoice.
+- [ ] Regression tests cover body text, tables, headers/footers, split runs,
+  repeated labels, missing fields, unchanged content, master-template
+  immutability, and verification failure before export using sanitized data.
+- [ ] Generation still cleans up the temporary document after successful export
+  and after parsing, replacement, verification, export, or cleanup failures;
+  failures remain classified without exposing document contents or identifiers.
+
+## Out of scope
+
+- Supporting arbitrary Word files, PDFs, images, OCR, or unsupported Google Docs
+  structures; track those as a separately groomed follow-up.
+- Changing invoice calculations, field-review UX, authentication, template
+  connection, or browser download behavior, covered by #TASK-3, #TASK-10,
+  #TASK-18/#TASK-22, and #TASK-27.
+- Adding a new parsing dependency without approval; if the existing Google Docs
+  API representation cannot support a required DOCX structure, create a
+  separately groomed dependency/integration task.
+
+## Constraints
+
+- Reuse the provider, field-map, replacement, export, and cleanup boundaries
+  from #TASK-7, #TASK-9, #TASK-11, and #TASK-12; keep the fix in the backend
+  document-processing path.
+- Use stable field names and source locations rather than positional assumptions
+  or raw document-wide string replacement.
+- Use sanitized/disposable `.docx`/Google Docs fixtures only; do not log or
+  commit real invoice data, bank details, document contents, credentials, or
+  document IDs.
+- Read `_docs/testing-guidelines.md` before adding tests and do not add
+  dependencies without approval.
