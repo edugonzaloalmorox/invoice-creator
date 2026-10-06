@@ -89,6 +89,47 @@ The backend is authoritative for validation, calculations, template selection,
 and generated output. The client cannot provide the total or choose an
 arbitrary template.
 
+## Google Docs template editing
+
+Before connecting a real Google Docs template, replace each editable invoice
+value with exactly one of the following markers. Keep the surrounding labels and
+formatting, but type the markers as normal editable Google Docs text.
+
+| Field | Marker | Supported location in the template |
+| --- | --- | --- |
+| Service start date | `{{service_start_date}}` | Table cell |
+| Service end date | `{{service_end_date}}` | Table cell |
+| Days worked | `{{days_worked}}` | Body paragraph |
+| Pay per day | `{{pay_per_day}}` | Body paragraph |
+| Currency | `{{currency}}` | Header paragraph |
+| Bank name | `{{bank_name}}` | Footer paragraph |
+| Account holder | `{{account_holder}}` | Body paragraph |
+| IBAN or account number | `{{iban_or_account_number}}` | Body paragraph |
+| SWIFT/BIC | `{{swift_or_bic}}` | Body paragraph |
+| Total | `{{total_amount}}` | Table cell |
+
+For example:
+
+```text
+Service start date: {{service_start_date}}
+```
+
+Markers must use the exact spelling and casing shown above, with no spaces
+inside the braces. Each marker must occur exactly once. Do not put markers in
+images, drawings, text boxes, charts, or prefilled values. The supported
+locations are ordinary editable body text, table-cell text, and real Google Docs
+header/footer text; unsupported objects or duplicated markers cause generation
+to fail safely.
+
+After editing and saving the document:
+
+1. Paste the document link into the app again to reconnect the template.
+2. Check the detected fields in the review screen or `GET /api/template/fields`.
+3. Confirm `service_start_date` and every other required field have neither a
+   `missing_field` nor an `ambiguous_field` warning.
+4. Generate a test invoice and verify the PDF contains the new values and
+   recalculated `total_amount`.
+
 ## API overview
 
 | Endpoint | Purpose |
