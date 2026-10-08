@@ -283,6 +283,7 @@ created, including failure paths.
 
 | Field | Type | Required | Rules |
 | --- | --- | --- | --- |
+| `invoice_number` | string | Yes | Maximum 50 characters; whitespace normalized |
 | `service_start_date` | string | Yes | `YYYY-MM-DD` |
 | `service_end_date` | string | No | `YYYY-MM-DD`; define whether it may precede the start date |
 | `days_worked` | decimal string | Yes | Non-negative, up to 366, with at most 2 decimal places |

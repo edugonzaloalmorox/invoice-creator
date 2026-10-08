@@ -104,6 +104,46 @@ def google_document():
 
 
 class GoogleProviderTest(unittest.TestCase):
+    def test_replace_values_accepts_canonical_template_without_legacy_aliases(self):
+        document = {
+            "title": "Canonical invoice template",
+            "body": {"content": [{"paragraph": {"elements": [{"textRun": {"content": "{{finish_date_service}} {{total}}"}}]}}]},
+            "headers": {},
+            "footers": {},
+        }
+        docs = FakeDocs(document)
+        provider = GoogleDocumentProvider("/run/secrets/google.json", drive_service=FakeDrive({}), docs_service=docs)
+
+        provider.replace_values("temporary-copy-id", {
+            "service_end_date": "2026-10-02",
+            "finish_date_service": "2026-10-02",
+            "total_amount": "1200.00",
+            "total": "1200.00",
+        })
+
+        requests = docs.documents_api.calls[-1]["body"]["requests"]
+        fields = [request["replaceAllText"]["containsText"]["text"] for request in requests]
+        self.assertIn("{{finish_date_service}}", fields)
+        self.assertIn("{{total}}", fields)
+        self.assertNotIn("{{service_end_date}}", fields)
+        self.assertNotIn("{{total_amount}}", fields)
+
+    def test_normalizes_and_replaces_placeholder_split_by_whitespace(self):
+        document = {
+            "title": "Wrapped invoice template",
+            "body": {"content": [{"paragraph": {"elements": [{"textRun": {"content": "{{start_date_service\n}}"}}]}}]},
+            "headers": {},
+            "footers": {},
+        }
+        snapshot = normalize_google_document(document, document_id="wrapped-template")
+        self.assertTrue(snapshot.fields["start_date_service"])
+
+        docs = FakeDocs(document)
+        provider = GoogleDocumentProvider("/run/secrets/google.json", drive_service=FakeDrive({}), docs_service=docs)
+        provider.replace_values("temporary-copy-id", {"start_date_service": "2026-09-28"})
+        request = docs.documents_api.calls[-1]["body"]["requests"][0]["replaceAllText"]
+        self.assertEqual(request["containsText"]["text"], "{{start_date_service\n}}")
+
     def test_google_document_id_accepts_only_google_docs_links(self):
         self.assertEqual(google_document_id("https://docs.google.com/document/d/abc_123/edit"), "abc_123")
         self.assertIsNone(google_document_id("http://docs.google.com/document/d/abc/edit"))

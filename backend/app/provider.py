@@ -118,7 +118,7 @@ class FixtureDocumentProvider:
             if not locations:
                 raise ProviderError("replace_values", "field_missing", field=field)
             if len(locations) > 1:
-                raise ProviderError("replace_values", "field_ambiguous")
+                raise ProviderError("replace_values", "field_ambiguous", field=field)
             values[field] = value
         self._copies[document_id] = DocumentSnapshot(document.document_id, document.title, document.fields, values)
 

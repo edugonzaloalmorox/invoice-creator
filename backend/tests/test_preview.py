@@ -9,6 +9,7 @@ from backend.app.config import load_config
 def invoice_body() -> bytes:
     return json.dumps(
         {
+            "invoice_number": "INV-2026-0001",
             "service_start_date": "2026-09-01",
             "service_end_date": "2026-09-05",
             "days_worked": "5",
@@ -37,6 +38,7 @@ class PreviewEndpointTest(unittest.TestCase):
         )
         self.assertEqual(status["status"], "200 OK")
         self.assertEqual(payload["input"]["currency"], "EUR")
+        self.assertEqual(payload["input"]["invoice_number"], "INV-2026-0001")
         self.assertEqual(payload["calculation"]["total_amount"], "1200.00")
         self.assertTrue(payload["ready_for_generation"])
 
@@ -87,4 +89,3 @@ class PreviewEndpointTest(unittest.TestCase):
         )
         self.assertEqual(status["status"], "503 Service Unavailable")
         self.assertEqual(payload["error"]["code"], "service_not_ready")
-

@@ -12,9 +12,11 @@ export function createFieldReviewController({ loadFields, preview }) {
   const listeners = new Set();
   const snapshot = () => {
     const fields = state.fields.map((field) => ({ ...field, value: state.edits[field.name] ?? field.value, edited: field.name in state.edits }));
-    const unresolved = fields.some((field) => field.required && (
-      !field.value || field.warnings?.some((warning) => BLOCKING_WARNINGS.has(warning))
-    ));
+    const unresolved = fields.some((field) => {
+      const warnings = field.warnings || [];
+      const hasAmbiguousValue = Boolean(field.value) && warnings.includes("ambiguous_field");
+      return (field.required && (!field.value || warnings.some((warning) => BLOCKING_WARNINGS.has(warning)))) || hasAmbiguousValue;
+    });
     return {
       status: state.status, fields, error: state.error, preview: state.preview, download: state.download,
       canConfirm: state.status === "ready" && !unresolved && state.preview !== null,

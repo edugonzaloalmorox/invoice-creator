@@ -13,6 +13,7 @@ from backend.app.invoice import (
 def valid_invoice() -> dict[str, str]:
     return {
         "service_start_date": "2026-09-01",
+        "invoice_number": "INV-2026-0001",
         "service_end_date": "2026-09-05",
         "days_worked": "5",
         "pay_per_day": "240.00",
@@ -29,6 +30,7 @@ class InvoiceValidationTest(unittest.TestCase):
         result = validate_invoice(valid_invoice())
         self.assertTrue(result.valid)
         self.assertEqual(result.value.service_start_date, "2026-09-01")
+        self.assertEqual(result.value.invoice_number, "INV-2026-0001")
         self.assertEqual(result.value.service_end_date, "2026-09-05")
         self.assertEqual(result.value.currency, "EUR")
         self.assertEqual(result.value.bank_name, "Example Bank")
@@ -84,6 +86,18 @@ class InvoiceValidationTest(unittest.TestCase):
         values.pop("iban_or_account_number")
         values.pop("swift_or_bic")
         self.assertTrue(validate_invoice(values).valid)
+
+    def test_invoice_number_is_required_and_normalized(self):
+        values = valid_invoice()
+        values["invoice_number"] = "  INV-2026-0002  "
+        result = validate_invoice(values)
+        self.assertTrue(result.valid)
+        self.assertEqual(result.value.invoice_number, "INV-2026-0002")
+
+        values.pop("invoice_number")
+        result = validate_invoice(values)
+        self.assertFalse(result.valid)
+        self.assertIn("invoice_number", {error.name for error in result.errors})
 
     def test_missing_required_fields_do_not_echo_sensitive_values(self):
         result = validate_invoice({"bank_name": "TEST-SENSITIVE-BANK"})

@@ -2,6 +2,7 @@ import json
 import unittest
 
 from backend.app.config import CONFIG_TEMPLATE_ID, load_config
+from backend.app.field_map import FIELD_MAP
 from backend.app.main import create_app
 from backend.app.provider import FixtureDocumentProvider
 from backend.tests.test_configuration import call, configured_values
@@ -22,7 +23,7 @@ class CredentialFreeWorkflowTest(unittest.TestCase):
         review_payload = json.loads(invoice_body())
         self.assertEqual(
             {field["name"] for field in detection["fields"]},
-            {"service_start_date", "service_end_date", "days_worked", "pay_per_day", "currency", "bank_name", "account_holder", "iban_or_account_number", "swift_or_bic", "total_amount"},
+            set(FIELD_MAP),
         )
 
         preview_status, preview = call(app, "/api/invoices/preview", method="POST", body=invoice_body(), content_type="application/json")

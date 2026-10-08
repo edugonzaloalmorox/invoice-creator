@@ -9,7 +9,16 @@ test("frontend scaffold is importable", () => {
 
 test("invoice form exposes all fields and keeps generation locked before preview", () => {
   const controller = createInvoiceFormController({ preview: async () => ({ ok: true }) });
-  assert.equal(invoiceFields.length, 9);
+  assert.equal(invoiceFields.length, 16);
+  assert.deepEqual(invoiceFields.find(({ name }) => name === "invoice_number"), {
+    name: "invoice_number", label: "Invoice number", type: "text", required: true, autocomplete: "off",
+  });
+  assert.deepEqual(new Set(invoiceFields.map(({ name }) => name)), new Set([
+    "invoice_number", "service_start_date", "week_ending", "days_worked",
+    "start_date_service", "finish_date_service", "pay_per_day", "currency",
+    "amount", "subtotal", "total", "bank_name", "account_holder", "iban",
+    "swift", "payment_reference",
+  ]));
   assert.equal(controller.getState().canGenerate, false);
   controller.setValue("currency", "EUR");
   assert.equal(controller.getState().values.currency, "EUR");

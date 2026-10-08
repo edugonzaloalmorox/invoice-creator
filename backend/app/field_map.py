@@ -22,6 +22,7 @@ class FieldDefinition:
 
 
 FIELD_MAP = MappingProxyType({
+    "invoice_number": FieldDefinition("invoice_number", "Invoice number", "body:paragraph:3", "text", "text", True),
     "service_start_date": FieldDefinition("service_start_date", "Service start date", "table:0/row:1/cell:1", "YYYY-MM-DD", "date", True),
     "service_end_date": FieldDefinition("service_end_date", "Service end date", "table:0/row:2/cell:1", "YYYY-MM-DD", "date", False),
     "days_worked": FieldDefinition("days_worked", "Days worked", "body:paragraph:4", "decimal(2)", "number", True),
@@ -32,6 +33,28 @@ FIELD_MAP = MappingProxyType({
     "iban_or_account_number": FieldDefinition("iban_or_account_number", "IBAN or account number", "body:paragraph:7", "uppercase-text", "text", False),
     "swift_or_bic": FieldDefinition("swift_or_bic", "SWIFT/BIC", "body:paragraph:8/split-run:1", "BIC", "text", False),
     "total_amount": FieldDefinition("total_amount", "Total", "table:1/row:3/cell:1", "decimal(2)", "money", True, True),
+    "invoice_date": FieldDefinition("invoice_date", "Invoice date", "body:paragraph:9", "YYYY-MM-DD", "date", False),
+    "week_ending": FieldDefinition("week_ending", "Week ending", "body:paragraph:10", "YYYY-MM-DD", "date", False),
+    "start_date_service": FieldDefinition("start_date_service", "Start date service", "table:2/row:1/cell:1", "YYYY-MM-DD", "date", False),
+    "finish_date_service": FieldDefinition("finish_date_service", "Finish date service", "table:2/row:2/cell:1", "YYYY-MM-DD", "date", False),
+    "rate": FieldDefinition("rate", "Rate", "body:paragraph:11", "decimal(2)", "money", False),
+    "amount": FieldDefinition("amount", "Amount", "table:1/row:1/cell:1", "decimal(2)", "money", False),
+    "subtotal": FieldDefinition("subtotal", "Subtotal", "table:1/row:2/cell:1", "decimal(2)", "money", False),
+    "total": FieldDefinition("total", "Total", "table:1/row:4/cell:1", "decimal(2)", "money", False, True),
+    "iban": FieldDefinition("iban", "IBAN", "body:paragraph:12", "uppercase-text", "text", False),
+    "swift": FieldDefinition("swift", "SWIFT", "body:paragraph:13/split-run:1", "BIC", "text", False),
+    "payment_reference": FieldDefinition("payment_reference", "Payment reference", "footer:paragraph:2", "text", "text", False),
+})
+
+# Older API/template names are accepted for compatibility, but a template that
+# uses the canonical name must not be required to contain both placeholders.
+FIELD_ALIASES = MappingProxyType({
+    "service_end_date": "finish_date_service",
+    "invoice_date": "service_start_date",
+    "rate": "pay_per_day",
+    "total_amount": "total",
+    "iban_or_account_number": "iban",
+    "swift_or_bic": "swift",
 })
 
 

@@ -41,6 +41,44 @@ def call_raw(app, body: bytes, headers: dict[str, str] | None = None, remote_add
 
 
 class GenerateEndpointTest(unittest.TestCase):
+    def test_new_invoice_template_placeholders_receive_reviewed_and_calculated_values(self):
+        values = {
+            "invoice_number": "INV-2026-0002",
+            "service_start_date": "2026-09-30",
+            "week_ending": "2026-10-04",
+            "days_worked": "5",
+            "start_date_service": "2026-09-28",
+            "finish_date_service": "2026-10-02",
+            "pay_per_day": "240.00",
+            "currency": "EUR",
+            "account_holder": "Test Account Holder",
+            "bank_name": "Edited Test Bank",
+            "iban": "TEST-IBAN-0002",
+            "swift": "TESTBIC2",
+            "payment_reference": "TEST-REF-0002",
+        }
+        provider = FixtureDocumentProvider()
+        status, body = call_raw(configured_app(provider), json.dumps(values).encode())
+
+        self.assertEqual(status["status"], "200 OK")
+        for expected in (
+            b"invoice_number=INV-2026-0002",
+            b"service_start_date=2026-09-30",
+            b"week_ending=2026-10-04",
+            b"start_date_service=2026-09-28",
+            b"finish_date_service=2026-10-02",
+            b"pay_per_day=240.00",
+            b"amount=1200.00",
+            b"subtotal=1200.00",
+            b"total=1200.00",
+            b"account_holder=Test Account Holder",
+            b"bank_name=Edited Test Bank",
+            b"iban=TEST-IBAN-0002",
+            b"swift=TESTBIC2",
+            b"payment_reference=TEST-REF-0002",
+        ):
+            self.assertIn(expected, body)
+
     def test_success_returns_pdf_and_cleans_up_copy(self):
         provider = FixtureDocumentProvider()
         status, body = call_raw(configured_app(provider), invoice_body())
@@ -97,6 +135,21 @@ class GenerateEndpointTest(unittest.TestCase):
         self.assertNotIn(b"Example Bank", body)
         self.assertEqual(provider.calls[-1][0], "delete_document")
 
+    def test_ambiguous_template_field_returns_safe_field_level_guidance(self):
+        fields = {
+            name: (definition.location, definition.location)
+            if name == "bank_name" else (definition.location,)
+            for name, definition in FIELD_MAP.items()
+        }
+        provider = FixtureDocumentProvider(fields=fields)
+        status, body = call_raw(configured_app(provider), invoice_body())
+        payload = json.loads(body)
+
+        self.assertEqual(status["status"], "502 Bad Gateway")
+        self.assertEqual(payload["error"]["code"], "template_field_ambiguous")
+        self.assertEqual(payload["error"]["message"], "Template contains multiple locations for bank name. Keep exactly one placeholder and try again.")
+        self.assertEqual(provider.calls[-1][0], "delete_document")
+
     def test_fixture_pdf_contains_reviewed_values_and_recalculated_total(self):
         provider = FixtureDocumentProvider()
         values = json.loads(invoice_body())
@@ -106,6 +159,7 @@ class GenerateEndpointTest(unittest.TestCase):
         self.assertIn(b"bank_name=Edited Test Bank", body)
         self.assertNotIn(b"bank_name=Example Bank", body)
         self.assertIn(b"iban_or_account_number=TEST-IBAN-0001", body)
+        self.assertIn(b"invoice_number=INV-2026-0001", body)
         self.assertIn(b"total_amount=1200.00", body)
         self.assertNotIn(b"stale", body.lower())
 

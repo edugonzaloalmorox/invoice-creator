@@ -1,15 +1,22 @@
 export const appName = "invoice-filler";
 
 export const invoiceFields = [
-  { name: "service_start_date", label: "Service start date", type: "date", required: true },
-  { name: "service_end_date", label: "Service end date", type: "date", required: false },
+  { name: "invoice_number", label: "Invoice number", type: "text", required: true, autocomplete: "off" },
+  { name: "service_start_date", label: "Invoice date", type: "date", required: true },
+  { name: "week_ending", label: "Period / Week ending", type: "date", required: true },
   { name: "days_worked", label: "Days worked", type: "number", required: true, step: "0.01", min: "0" },
-  { name: "pay_per_day", label: "Pay per day", type: "number", required: true, step: "0.01", min: "0" },
+  { name: "start_date_service", label: "Service start date", type: "date", required: true },
+  { name: "finish_date_service", label: "Service finish date", type: "date", required: true },
+  { name: "pay_per_day", label: "Rate per day", type: "number", required: true, step: "0.01", min: "0" },
   { name: "currency", label: "Currency", type: "text", required: true, autocomplete: "off" },
+  { name: "amount", label: "Amount", type: "number", required: false, calculated: true, step: "0.01", min: "0" },
+  { name: "subtotal", label: "Subtotal", type: "number", required: false, calculated: true, step: "0.01", min: "0" },
+  { name: "total", label: "Total", type: "number", required: false, calculated: true, step: "0.01", min: "0" },
   { name: "bank_name", label: "Bank name", type: "text", required: false },
   { name: "account_holder", label: "Account holder", type: "text", required: false },
-  { name: "iban_or_account_number", label: "IBAN or account number", type: "text", required: false, autocomplete: "off" },
-  { name: "swift_or_bic", label: "SWIFT/BIC", type: "text", required: false, autocomplete: "off" },
+  { name: "iban", label: "IBAN / Account number", type: "text", required: false, autocomplete: "off" },
+  { name: "swift", label: "BIC / SWIFT", type: "text", required: false, autocomplete: "off" },
+  { name: "payment_reference", label: "Payment reference", type: "text", required: false },
 ];
 
 const initialValues = Object.fromEntries(invoiceFields.map(({ name }) => [name, ""]));
@@ -47,6 +54,12 @@ export function createInvoiceFormController({ preview } = {}) {
           state.preview = null;
           state.status = "error";
         } else {
+          const total = result.calculation?.total_amount;
+          if (total != null) {
+            state.values.amount = total;
+            state.values.subtotal = total;
+            state.values.total = total;
+          }
           state.preview = result;
           state.status = "success";
         }
@@ -137,6 +150,7 @@ function fieldMarkup(field, state) {
   const attributes = [
     `id="${field.name}"`, `name="${field.name}"`, `type="${field.type}"`,
     `value="${escapeHtml(state.values[field.name])}"`, field.required ? "required" : "",
+    field.calculated ? "readonly" : "",
     field.step ? `step="${field.step}"` : "", field.min ? `min="${field.min}"` : "",
     field.autocomplete ? `autocomplete="${field.autocomplete}"` : "",
     error ? 'aria-invalid="true"' : "", error ? `aria-describedby="${field.name}-error"` : "",

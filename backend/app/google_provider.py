@@ -18,7 +18,7 @@ from google.oauth2 import credentials as user_credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from .field_map import FIELD_MAP, TEMPLATE_VERSION
+from .field_map import FIELD_ALIASES, FIELD_MAP, TEMPLATE_VERSION
 from .provider import DocumentSnapshot, ProviderError
 
 
@@ -27,7 +27,7 @@ GOOGLE_SCOPES = (
     "https://www.googleapis.com/auth/drive.file",
 )
 GOOGLE_DOC_MIME_TYPE = "application/vnd.google-apps.document"
-FIELD_MARKER = re.compile(r"\{\{([a-z][a-z0-9_]*)\}\}")
+FIELD_MARKER = re.compile(r"\{\{\s*([a-z][a-z0-9_]*)\s*\}\}")
 GOOGLE_DOCUMENT_ID = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
@@ -294,25 +294,36 @@ class GoogleDocumentProvider:
             current = docs.documents().get(documentId=document_id, includeTabsContent=True).execute(num_retries=0)
             snapshot = normalize_google_document(current, document_id=document_id)
             current_text = _document_text(current)
-            for field in replacements:
+            markers = {match.group(1): match.group(0) for match in FIELD_MARKER.finditer(current_text)}
+            effective_replacements = {}
+            for field, value in replacements.items():
                 locations = snapshot.fields.get(field, ())
+                if not locations:
+                    canonical_name = FIELD_ALIASES.get(field)
+                    canonical_locations = snapshot.fields.get(canonical_name, ()) if canonical_name else ()
+                    if len(canonical_locations) == 1:
+                        # The canonical placeholder is present; the legacy
+                        # alias is intentionally absent from this template.
+                        continue
                 # A completely empty fake response is tolerated here so the
                 # operation remains independently testable; verification will
                 # still reject it before export in the generation workflow.
                 if not locations and current_text:
                     raise ProviderError("replace_values", "field_missing", field=field)
                 if not locations and not current_text:
+                    effective_replacements[field] = value
                     continue
                 if len(locations) != 1:
-                    raise ProviderError("replace_values", "field_ambiguous")
+                    raise ProviderError("replace_values", "field_ambiguous", field=field)
+                effective_replacements[field] = value
             requests = [
                 {
                     "replaceAllText": {
-                        "containsText": {"text": "{{" + field + "}}", "matchCase": True},
+                        "containsText": {"text": markers.get(field, "{{" + field + "}}"), "matchCase": True},
                         "replaceText": str(value),
                     }
                 }
-                for field, value in replacements.items()
+                for field, value in effective_replacements.items()
             ]
             if requests:
                 docs.documents().batchUpdate(documentId=document_id, body={"requests": requests}).execute(num_retries=0)

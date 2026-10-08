@@ -93,16 +93,29 @@ def _decimal_string(value) -> str:
 
 
 def _invoice_payload(invoice: InvoiceInput) -> dict:
+    total = format_total(invoice)
     return {
+        "invoice_number": invoice.invoice_number,
         "service_start_date": invoice.service_start_date,
         "service_end_date": invoice.service_end_date,
+        "invoice_date": invoice.service_start_date,
+        "week_ending": invoice.week_ending,
+        "start_date_service": invoice.start_date_service,
+        "finish_date_service": invoice.finish_date_service,
         "days_worked": _decimal_string(invoice.days_worked),
         "pay_per_day": format(invoice.pay_per_day, "f"),
+        "rate": format(invoice.pay_per_day, "f"),
+        "amount": total,
+        "subtotal": total,
+        "total": total,
         "currency": invoice.currency,
         "bank_name": invoice.bank_name,
         "account_holder": invoice.account_holder,
         "iban_or_account_number": invoice.iban_or_account_number,
         "swift_or_bic": invoice.swift_or_bic,
+        "iban": invoice.iban_or_account_number,
+        "swift": invoice.swift_or_bic,
+        "payment_reference": invoice.payment_reference,
     }
 
 
@@ -536,6 +549,10 @@ class Application:
             definition = field_definition(error.field) if error.field else None
             label = definition.label.lower() if definition else "required invoice field"
             return "502 Bad Gateway", "template_field_missing", f"Template is missing {label}. Update the template and try again."
+        if error.operation == "replace_values" and error.code == "field_ambiguous":
+            definition = field_definition(error.field) if error.field else None
+            label = definition.label.lower() if definition else "an invoice field"
+            return "502 Bad Gateway", "template_field_ambiguous", f"Template contains multiple locations for {label}. Keep exactly one placeholder and try again."
         if error.operation == "verify_replacements":
             return "502 Bad Gateway", "replacement_verification_failed", "The invoice values could not be confirmed in the temporary document. Try again."
         if error.operation == "delete_document":

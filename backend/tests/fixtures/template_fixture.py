@@ -5,6 +5,7 @@ SANITIZED_TEMPLATE = {
     "version": "2026-01",
     "sections": {
         "body": [
+            {"location": "body:paragraph:3", "text": "Invoice number: {{invoice_number}}"},
             {"location": "body:paragraph:4", "text": "Days worked: {{days_worked}}"},
             {"location": "body:paragraph:5", "text": "Pay per day: {{pay_per_day}}"},
             {"location": "body:paragraph:6", "text": "Account holder: {{account_holder}}"},
