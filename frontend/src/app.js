@@ -1,5 +1,3 @@
-export const appName = "invoice-filler";
-
 export const invoiceFields = [
   { name: "invoice_number", label: "Invoice number", type: "text", required: true, autocomplete: "off" },
   { name: "service_start_date", label: "Invoice date", type: "date", required: true },

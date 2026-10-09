@@ -23,12 +23,6 @@ from .provider import FixtureDocumentProvider, ProviderError
 logger = logging.getLogger(__name__)
 
 
-def project_name() -> str:
-    """Return the name of the application scaffold."""
-
-    return "invoice-filler"
-
-
 def _request_id() -> str:
     return f"req_{secrets.token_urlsafe(12)}"
 

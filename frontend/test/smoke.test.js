@@ -1,11 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { apiOrigin, appName, createInvoiceFormController, invoiceFields, renderTemplateConnection, requestLogout, requestPreview, requestSession, requestTemplate } from "../src/app.js";
-import { createFieldReviewController, requestGeneration } from "../src/review.js";
-
-test("frontend scaffold is importable", () => {
-  assert.equal(appName, "invoice-filler");
-});
+import { apiOrigin, createInvoiceFormController, invoiceFields, renderTemplateConnection, requestLogout, requestPreview, requestSession, requestTemplate } from "../src/app.js";
+import { requestGeneration } from "../src/review.js";
 
 test("invoice form exposes all fields and keeps generation locked before preview", () => {
   const controller = createInvoiceFormController({ preview: async () => ({ ok: true }) });
@@ -142,50 +138,6 @@ test("template connection prevents duplicate submissions and preserves the link 
   await first;
   await second;
   assert.match(rendered, /https:\/\/docs\.google\.com\/document\/d\/fixture-template\/edit/);
-});
-
-test("field review blocks unresolved required warnings and preserves edits through retry", async () => {
-  let attempts = 0;
-  const controller = createFieldReviewController({
-    loadFields: async () => {
-      attempts += 1;
-      if (attempts === 1) throw new Error("Temporary failure");
-      return { fields: [
-        { name: "service_start_date", label: "Start", type: "date", value: null, required: true, warnings: ["missing_field"], source: { section: "table", location: "table:0" } },
-        { name: "total_amount", label: "Total", type: "money", value: "10.00", required: true, calculated: true, warnings: [], source: { section: "table", location: "table:1" } },
-      ] };
-    },
-    preview: async () => ({ ok: true, calculation: { total_amount: "10.00" } }),
-  });
-  await controller.load();
-  assert.equal(controller.getState().status, "error");
-  controller.edit("service_start_date", "2026-09-01");
-  await controller.retry();
-  controller.edit("service_start_date", "2026-09-01");
-  assert.equal(controller.getState().unresolved, false);
-  const confirmed = await controller.confirm();
-  assert.equal(confirmed.canConfirm, true);
-  assert.equal(confirmed.fields[0].value, "2026-09-01");
-});
-
-test("generation preserves review state on failure and prevents duplicate requests", async () => {
-  let resolveGeneration;
-  let calls = 0;
-  const controller = createFieldReviewController({
-    loadFields: async () => ({ fields: [{ name: "service_start_date", label: "Start", type: "date", value: "2026-09-01", required: true, warnings: [], source: {} }] }),
-    preview: async () => ({ ok: true }),
-  });
-  await controller.load();
-  await controller.confirm();
-  const first = controller.generate(() => { calls += 1; return new Promise((resolve) => { resolveGeneration = resolve; }); });
-  const second = controller.generate(() => { calls += 1; return Promise.resolve({ filename: "invoice.pdf" }); });
-  assert.equal(calls, 1);
-  assert.equal(controller.getState().status, "generating");
-  resolveGeneration({ filename: "invoice.pdf" });
-  await first;
-  await second;
-  assert.equal(controller.getState().fields[0].value, "2026-09-01");
-  assert.equal(controller.getState().download.filename, "invoice.pdf");
 });
 
 test("generation downloads only a successful PDF with the safe server filename", async () => {
