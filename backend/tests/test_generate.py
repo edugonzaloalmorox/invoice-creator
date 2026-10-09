@@ -68,6 +68,7 @@ class GenerateEndpointTest(unittest.TestCase):
             b"start_date_service=2026-09-28",
             b"finish_date_service=2026-10-02",
             b"pay_per_day=240.00",
+            b"currency=\xe2\x82\xac",
             b"amount=1200.00",
             b"subtotal=1200.00",
             b"total=1200.00",
@@ -78,6 +79,15 @@ class GenerateEndpointTest(unittest.TestCase):
             b"payment_reference=TEST-REF-0002",
         ):
             self.assertIn(expected, body)
+
+    def test_gbp_invoice_contains_pound_symbol_in_template(self):
+        values = json.loads(invoice_body())
+        values["currency"] = "GBP"
+        provider = FixtureDocumentProvider()
+        status, body = call_raw(configured_app(provider), json.dumps(values).encode())
+        self.assertEqual(status["status"], "200 OK")
+        self.assertIn(b"currency=\xc2\xa3", body)
+        self.assertNotIn(b"currency=GBP", body)
 
     def test_success_returns_pdf_and_cleans_up_copy(self):
         provider = FixtureDocumentProvider()

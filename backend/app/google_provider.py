@@ -18,7 +18,7 @@ from google.oauth2 import credentials as user_credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from .field_map import FIELD_ALIASES, FIELD_MAP, TEMPLATE_VERSION
+from .field_map import FIELD_ALIASES, FIELD_MAP, REPEATABLE_FIELDS, TEMPLATE_VERSION
 from .provider import DocumentSnapshot, ProviderError
 
 
@@ -175,7 +175,13 @@ def normalize_google_document(document: Mapping[str, Any], *, document_id: str) 
             for match in FIELD_MARKER.finditer(text):
                 name = match.group(1)
                 if name in locations:
-                    locations[name].append(location)
+                    # A paragraph/cell is one replacement location even when
+                    # the same placeholder occurs more than once inside it.
+                    # replaceAllText replaces all occurrences in that
+                    # location; only distinct document locations are
+                    # ambiguous.
+                    if location not in locations[name]:
+                        locations[name].append(location)
 
     return DocumentSnapshot(
         document_id=document_id,
@@ -313,7 +319,7 @@ class GoogleDocumentProvider:
                 if not locations and not current_text:
                     effective_replacements[field] = value
                     continue
-                if len(locations) != 1:
+                if len(locations) != 1 and field not in REPEATABLE_FIELDS:
                     raise ProviderError("replace_values", "field_ambiguous", field=field)
                 effective_replacements[field] = value
             requests = [

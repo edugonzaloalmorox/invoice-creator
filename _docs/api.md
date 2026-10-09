@@ -288,7 +288,7 @@ created, including failure paths.
 | `service_end_date` | string | No | `YYYY-MM-DD`; define whether it may precede the start date |
 | `days_worked` | decimal string | Yes | Non-negative, up to 366, with at most 2 decimal places |
 | `pay_per_day` | decimal string | Yes | Non-negative, up to 1,000,000.00, with at most 2 decimal places |
-| `currency` | string | Yes | Case-insensitive input; currently only `EUR` is supported and is normalized to uppercase |
+| `currency` | string | Yes | Case-insensitive input; `EUR` and `GBP` are supported and normalized to uppercase. Generated documents use `€` for EUR and `£` for GBP. |
 | `bank_name` | string | No | Optional individually; maximum 200 characters; whitespace normalized |
 | `account_holder` | string | No | Optional individually; maximum 200 characters; whitespace normalized |
 | `iban_or_account_number` | string | No | Optional individually; maximum 34 characters after spaces are removed; normalized to uppercase |

@@ -6,7 +6,7 @@ export const invoiceFields = [
   { name: "start_date_service", label: "Service start date", type: "date", required: true },
   { name: "finish_date_service", label: "Service finish date", type: "date", required: true },
   { name: "pay_per_day", label: "Rate per day", type: "number", required: true, step: "0.01", min: "0" },
-  { name: "currency", label: "Currency", type: "text", required: true, autocomplete: "off" },
+  { name: "currency", label: "Currency", type: "select", required: true, options: [{ value: "EUR", label: "Euros (€)" }, { value: "GBP", label: "British pounds (£)" }] },
   { name: "amount", label: "Amount", type: "number", required: false, calculated: true, step: "0.01", min: "0" },
   { name: "subtotal", label: "Subtotal", type: "number", required: false, calculated: true, step: "0.01", min: "0" },
   { name: "total", label: "Total", type: "number", required: false, calculated: true, step: "0.01", min: "0" },
@@ -145,6 +145,10 @@ function escapeHtml(value) {
 
 function fieldMarkup(field, state) {
   const error = state.errors[field.name];
+  if (field.type === "select") {
+    const options = field.options.map(({ value, label }) => `<option value="${value}" ${state.values[field.name] === value ? "selected" : ""}>${label}</option>`).join("");
+    return `<div class="field"><label for="${field.name}">${field.label}${field.required ? " *" : ""}</label><select id="${field.name}" name="${field.name}" ${field.required ? "required" : ""}${error ? ' aria-invalid="true"' : ""}${error ? ` aria-describedby="${field.name}-error"` : ""}><option value="">Select a currency</option>${options}</select>${error ? `<p id="${field.name}-error" class="error" role="alert">${escapeHtml(error)}</p>` : ""}</div>`;
+  }
   const attributes = [
     `id="${field.name}"`, `name="${field.name}"`, `type="${field.type}"`,
     `value="${escapeHtml(state.values[field.name])}"`, field.required ? "required" : "",
@@ -162,7 +166,8 @@ export function renderInvoiceForm(root, { preview = requestPreview } = {}) {
     const pending = state.status === "pending";
     const formError = state.errors.form || "";
     const total = state.preview?.calculation?.total_amount;
-    root.innerHTML = `<form aria-labelledby="invoice-heading"><h1 id="invoice-heading">Create invoice</h1><p>Enter your invoice details to review the calculated total.</p><fieldset><legend>Invoice details</legend>${invoiceFields.map((field) => fieldMarkup(field, state)).join("")}</fieldset>${formError ? `<p class="error" role="alert">${escapeHtml(formError)}</p>` : ""}${total ? `<output aria-live="polite">Total: ${escapeHtml(total)} ${escapeHtml(state.preview.calculation.currency)}</output>` : ""}<div class="actions"><button type="submit" ${pending ? "disabled" : ""}>${pending ? "Checking…" : "Preview invoice"}</button><button type="button" disabled aria-disabled="true">Generate PDF</button></div></form>`;
+    const currencySymbol = { EUR: "€", GBP: "£" }[state.preview?.calculation?.currency] || "";
+    root.innerHTML = `<form aria-labelledby="invoice-heading"><h1 id="invoice-heading">Create invoice</h1><p>Enter your invoice details to review the calculated total.</p><fieldset><legend>Invoice details</legend>${invoiceFields.map((field) => fieldMarkup(field, state)).join("")}</fieldset>${formError ? `<p class="error" role="alert">${escapeHtml(formError)}</p>` : ""}${total ? `<output aria-live="polite">Total: ${currencySymbol}${escapeHtml(total)}</output>` : ""}<div class="actions"><button type="submit" ${pending ? "disabled" : ""}>${pending ? "Checking…" : "Preview invoice"}</button><button type="button" disabled aria-disabled="true">Generate PDF</button></div></form>`;
     const form = root.querySelector("form");
     form.addEventListener("submit", (event) => { event.preventDefault(); controller.submit(); });
     invoiceFields.forEach(({ name }) => {

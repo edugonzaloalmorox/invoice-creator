@@ -15,7 +15,7 @@ from .config import AppConfig, ConfigLoad, load_config
 from .detection import detect_fields
 from .field_map import field_definition
 from .google_provider import GoogleDocumentProvider, google_document_id
-from .invoice import InvoiceInput, format_total, validate_invoice
+from .invoice import InvoiceInput, currency_symbol, format_total, validate_invoice
 from .metrics import Metrics
 from .provider import FixtureDocumentProvider, ProviderError
 
@@ -482,6 +482,7 @@ class Application:
             document_id = provider.copy_document(template_id, f"invoice-{invoice.service_start_date}")
             self._log_provider_operation(request_id, "copy_document", "success")
             replacements = {name: value for name, value in _invoice_payload(invoice).items() if value is not None}
+            replacements["currency"] = currency_symbol(invoice.currency)
             replacements["total_amount"] = format_total(invoice)
             provider.replace_values(document_id, replacements)
             self._log_provider_operation(request_id, "replace_values", "success")

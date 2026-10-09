@@ -16,6 +16,10 @@ test("invoice form exposes all fields and keeps generation locked before preview
     "swift", "payment_reference",
   ]));
   assert.equal(controller.getState().canGenerate, false);
+  assert.deepEqual(invoiceFields.find(({ name }) => name === "currency"), {
+    name: "currency", label: "Currency", type: "select", required: true,
+    options: [{ value: "EUR", label: "Euros (€)" }, { value: "GBP", label: "British pounds (£)" }],
+  });
   controller.setValue("currency", "EUR");
   assert.equal(controller.getState().values.currency, "EUR");
 });

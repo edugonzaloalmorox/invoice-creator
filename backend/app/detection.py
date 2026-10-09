@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from .field_map import FIELD_MAP, TEMPLATE_VERSION
+from .field_map import FIELD_ALIASES, FIELD_MAP, REPEATABLE_FIELDS, TEMPLATE_VERSION
 from .provider import DocumentProvider, DocumentSnapshot, ProviderError
 
 
@@ -16,11 +16,15 @@ def detect_fields(provider: DocumentProvider, template_id: str) -> dict:
     warnings = []
     for name, definition in FIELD_MAP.items():
         locations = snapshot.fields.get(name, ())
+        if not locations:
+            alias_locations = snapshot.fields.get(FIELD_ALIASES.get(name), ()) if name in FIELD_ALIASES else ()
+            if alias_locations:
+                locations = alias_locations
         value = snapshot.values.get(name) or None
         field_warnings: list[str] = []
         if not locations:
             field_warnings.append("missing_field")
-        elif len(locations) > 1:
+        elif len(locations) > 1 and name not in REPEATABLE_FIELDS:
             field_warnings.append("ambiguous_field")
         if value is not None:
             field_warnings.append("already_filled")
@@ -34,7 +38,7 @@ def detect_fields(provider: DocumentProvider, template_id: str) -> dict:
             "value": value,
             "required": definition.required,
             "calculated": definition.calculated,
-            "confidence": "high" if len(locations) == 1 else "low",
+            "confidence": "high" if len(locations) == 1 or name in REPEATABLE_FIELDS else "low",
             "source": {"section": source_location.split(":", 1)[0], "location": source_location},
             "warnings": field_warnings,
         })

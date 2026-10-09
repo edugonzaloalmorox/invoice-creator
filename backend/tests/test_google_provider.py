@@ -144,6 +144,44 @@ class GoogleProviderTest(unittest.TestCase):
         request = docs.documents_api.calls[-1]["body"]["requests"][0]["replaceAllText"]
         self.assertEqual(request["containsText"]["text"], "{{start_date_service\n}}")
 
+    def test_repeated_placeholder_in_one_paragraph_is_one_location(self):
+        document = {
+            "title": "Repeated currency template",
+            "body": {"content": [{"paragraph": {"elements": [{"textRun": {"content": "{{currency}} / {{currency}}"}}]}}]},
+            "headers": {},
+            "footers": {},
+        }
+        snapshot = normalize_google_document(document, document_id="repeated-template")
+        self.assertEqual(len(snapshot.fields["currency"]), 1)
+
+        docs = FakeDocs(document)
+        provider = GoogleDocumentProvider("/run/secrets/google.json", drive_service=FakeDrive({}), docs_service=docs)
+        provider.replace_values("temporary-copy-id", {"currency": "€"})
+        request = docs.documents_api.calls[-1]["body"]["requests"][0]["replaceAllText"]
+        self.assertEqual(request["containsText"]["text"], "{{currency}}")
+
+    def test_currency_repeated_across_invoice_rows_is_replaced_once(self):
+        document = {
+            "title": "Invoice layout",
+            "body": {"content": [
+                {"paragraph": {"elements": [{"textRun": {"content": "{{currency}}{{pay_per_day}}/day"}}]}},
+                {"paragraph": {"elements": [{"textRun": {"content": "{{currency}}{{amount}}"}}]}},
+                {"paragraph": {"elements": [{"textRun": {"content": "{{currency}}{{subtotal}}"}}]}},
+                {"paragraph": {"elements": [{"textRun": {"content": "{{currency}}{{total}}"}}]}},
+            ]},
+            "headers": {},
+            "footers": {},
+        }
+        snapshot = normalize_google_document(document, document_id="invoice-layout")
+        self.assertEqual(len(snapshot.fields["currency"]), 4)
+
+        docs = FakeDocs(document)
+        provider = GoogleDocumentProvider("/run/secrets/google.json", drive_service=FakeDrive({}), docs_service=docs)
+        provider.replace_values("temporary-copy-id", {"currency": "£"})
+        requests = docs.documents_api.calls[-1]["body"]["requests"]
+        currency_requests = [request for request in requests if request["replaceAllText"]["containsText"]["text"] == "{{currency}}"]
+        self.assertEqual(len(currency_requests), 1)
+
     def test_google_document_id_accepts_only_google_docs_links(self):
         self.assertEqual(google_document_id("https://docs.google.com/document/d/abc_123/edit"), "abc_123")
         self.assertIsNone(google_document_id("http://docs.google.com/document/d/abc/edit"))

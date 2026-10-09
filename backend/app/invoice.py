@@ -9,7 +9,8 @@ import re
 from typing import Mapping
 
 
-SUPPORTED_CURRENCY = "EUR"
+SUPPORTED_CURRENCIES = ("EUR", "GBP")
+CURRENCY_SYMBOLS = {"EUR": "€", "GBP": "£"}
 MAX_DAYS_WORKED = Decimal("366")
 MAX_PAY_PER_DAY = Decimal("1000000.00")
 MAX_TEXT_LENGTH = 200
@@ -160,8 +161,8 @@ def validate_invoice(data: Mapping[str, object]) -> InvoiceValidation:
     currency = currency_raw.strip().upper() if isinstance(currency_raw, str) else ""
     if not currency:
         errors.append(_issue("currency", "required", "This field is required."))
-    elif currency != SUPPORTED_CURRENCY:
-        errors.append(_issue("currency", "unsupported_currency", "Use EUR."))
+    elif currency not in SUPPORTED_CURRENCIES:
+        errors.append(_issue("currency", "unsupported_currency", "Use EUR or GBP."))
 
     bank_name = _text(data, "bank_name", errors)
     account_holder = _text(data, "account_holder", errors)
@@ -215,3 +216,9 @@ def format_total(invoice: InvoiceInput) -> str:
     """Serialize the authoritative total as the API's decimal string."""
 
     return f"{calculate_total(invoice):.2f}"
+
+
+def currency_symbol(currency: str) -> str:
+    """Return the display symbol for a validated ISO currency code."""
+
+    return CURRENCY_SYMBOLS[currency]

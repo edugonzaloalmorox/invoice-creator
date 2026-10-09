@@ -5,6 +5,7 @@ from backend.app.invoice import (
     MAX_DAYS_WORKED,
     MAX_PAY_PER_DAY,
     calculate_total,
+    currency_symbol,
     format_total,
     validate_invoice,
 )
@@ -78,6 +79,14 @@ class InvoiceValidationTest(unittest.TestCase):
             {error.name for error in result.errors},
             {"currency", "bank_name", "swift_or_bic"},
         )
+
+    def test_gbp_is_supported_and_has_pound_symbol(self):
+        values = valid_invoice()
+        values["currency"] = "gbp"
+        result = validate_invoice(values)
+        self.assertTrue(result.valid)
+        self.assertEqual(result.value.currency, "GBP")
+        self.assertEqual(currency_symbol(result.value.currency), "£")
 
     def test_bank_fields_are_optional_individually(self):
         values = valid_invoice()

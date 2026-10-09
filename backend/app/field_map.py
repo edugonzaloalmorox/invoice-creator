@@ -8,6 +8,9 @@ from types import MappingProxyType
 
 TEMPLATE_ID = "fixture-template"
 TEMPLATE_VERSION = "2026-01"
+# These placeholders are intentionally reused wherever a monetary value is
+# shown. One replaceAllText request updates every occurrence safely.
+REPEATABLE_FIELDS = frozenset({"currency"})
 
 
 @dataclass(frozen=True, slots=True)
