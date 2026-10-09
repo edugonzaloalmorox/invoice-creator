@@ -20,6 +20,8 @@ class RedactingRequestHandler(WSGIRequestHandler):
     """Keep OAuth codes and other query values out of development logs."""
 
     def log_message(self, format, *args):
+        """Redact query strings before delegating the access log message."""
+
         safe_args = list(args)
         if safe_args and isinstance(safe_args[0], str):
             safe_args[0] = redact_request_line(safe_args[0])

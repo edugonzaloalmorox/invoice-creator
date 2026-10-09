@@ -28,12 +28,16 @@ class Metrics:
     """Thread-safe aggregate metrics with bounded endpoint cardinality."""
 
     def __init__(self):
+        """Initialize empty aggregate counters and their synchronization lock."""
+
         self._lock = Lock()
         self._requests: Counter[tuple[str, str]] = Counter()
         self._duration_ms: Counter[str] = Counter()
         self._events: Counter[str] = Counter()
 
     def record(self, path: str, status_code: str, duration_ms: float) -> None:
+        """Record bounded request status and duration aggregates."""
+
         safe_path = path if path in KNOWN_PATHS else "other"
         safe_status = status_code if status_code in {"2", "3", "4", "5"} else "other"
         with self._lock:
@@ -49,6 +53,8 @@ class Metrics:
             self._events[event] += 1
 
     def snapshot(self) -> dict:
+        """Return a stable, sanitized snapshot of all aggregate counters."""
+
         with self._lock:
             paths = sorted(KNOWN_PATHS | {"other"})
             requests = {

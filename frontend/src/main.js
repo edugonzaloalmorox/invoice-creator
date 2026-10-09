@@ -1,17 +1,21 @@
+/** Browser entry point for authentication, template selection, and invoice entry. */
 import { apiOrigin, renderInvoiceForm, renderTemplateConnection, requestLogout, requestPreview, requestSession, requestTemplate } from "./app.js?v=20261008-1";
 import { requestGeneration } from "./review.js?v=20261004-2";
 
 const root = document.querySelector("#app");
 
+/** Render a recoverable backend-connection error. */
 function renderApplicationError(message) {
   root.innerHTML = `<section class="service-error" aria-labelledby="service-error-title"><p class="eyebrow">Connection problem</p><h2 id="service-error-title">The invoice service is unavailable</h2><p>${message}</p><button class="button button-secondary" type="button" id="retry">Try again</button></section>`;
   root.querySelector("#retry").addEventListener("click", start);
 }
 
+/** Render the sign-in prompt for unauthenticated users. */
 function renderSignIn() {
   root.innerHTML = `<section class="service-error" aria-labelledby="sign-in-title"><p class="eyebrow">Sign in required</p><h2 id="sign-in-title">Sign in with Google</h2><p>Sign in to connect a template and create an invoice.</p><a class="button button-primary" href="${apiOrigin()}/auth/google">Continue with Google</a></section>`;
 }
 
+/** Start the application after checking backend health and session state. */
 async function start() {
   root.innerHTML = '<p class="loading" role="status">Connecting to the invoice service…</p>';
   try {
@@ -36,6 +40,7 @@ async function start() {
   }
 }
 
+/** Attach PDF generation behavior to the currently rendered invoice form. */
 function wireGeneration(templateToken) {
   let message = "";
   const update = () => {
@@ -65,6 +70,7 @@ function wireGeneration(templateToken) {
     }
     if (output.textContent !== message) output.textContent = message;
   };
+  /** Submit the reviewed form and expose download or failure status. */
   async function generate(event) {
     const button = event.currentTarget;
     const form = button.form;

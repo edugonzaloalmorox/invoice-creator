@@ -1,7 +1,8 @@
 import { apiOrigin } from "./app.js";
 
-/* The invoice form owns field review; this module only owns PDF download. */
+/** The invoice form owns field review; this module only owns PDF download. */
 
+/** Generate a verified PDF and trigger its browser download. */
 export async function requestGeneration(values, { fetchImpl = globalThis.fetch, urlImpl = globalThis.URL, documentImpl = globalThis.document, setTimeoutImpl = globalThis.setTimeout, templateToken } = {}) {
   const response = await fetchImpl(`${apiOrigin()}/api/invoices/generate`, {
     method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(templateToken ? { "X-Template-Selection": templateToken } : {}) }, body: JSON.stringify(values),

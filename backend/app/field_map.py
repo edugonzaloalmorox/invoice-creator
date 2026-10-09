@@ -15,6 +15,8 @@ REPEATABLE_FIELDS = frozenset({"currency"})
 
 @dataclass(frozen=True, slots=True)
 class FieldDefinition:
+    """Stable metadata describing one editable invoice placeholder."""
+
     name: str
     label: str
     location: str
@@ -62,4 +64,6 @@ FIELD_ALIASES = MappingProxyType({
 
 
 def field_definition(name: str) -> FieldDefinition | None:
+    """Return the mapped field definition for a stable field name."""
+
     return FIELD_MAP.get(name)

@@ -24,6 +24,8 @@ class AuthError(Exception):
     """An OAuth failure that is safe to map to a public error code."""
 
     def __init__(self, code: str, *, retryable: bool = False):
+        """Create an OAuth error with a stable public classification."""
+
         super().__init__(code)
         self.code = code
         self.retryable = retryable
@@ -31,6 +33,8 @@ class AuthError(Exception):
 
 @dataclass(frozen=True, slots=True)
 class OAuthSettings:
+    """Configuration required to perform Google OAuth exchanges."""
+
     client_id: str
     client_secret: str
     redirect_uri: str
@@ -40,6 +44,8 @@ class OAuthSettings:
 
 @dataclass(slots=True)
 class Session:
+    """Server-side session state and token-expiry metadata."""
+
     user_id: str
     email: str | None
     access_token: str
@@ -50,6 +56,8 @@ class Session:
 
 
 def _safe_json(response) -> dict:
+    """Decode a provider response or raise a sanitized availability error."""
+
     try:
         body = response.read()
         payload = json.loads(body)
@@ -64,10 +72,14 @@ class OAuthClient:
     """Google OAuth calls. The opener is injectable so tests never use a network."""
 
     def __init__(self, settings: OAuthSettings, *, opener=urlopen):
+        """Create a client using an injectable HTTP opener for deterministic tests."""
+
         self.settings = settings
         self._opener = opener
 
     def authorization_url(self, state: str) -> str:
+        """Build the Google authorization URL for a signed-in browser flow."""
+
         return f"{AUTHORIZATION_ENDPOINT}?{urlencode({
             'client_id': self.settings.client_id,
             'redirect_uri': self.settings.redirect_uri,
@@ -79,6 +91,8 @@ class OAuthClient:
         })}"
 
     def exchange_code(self, code: str) -> Session:
+        """Exchange an authorization code and load the associated user identity."""
+
         body = urlencode({
             "code": code,
             "client_id": self.settings.client_id,
@@ -112,6 +126,8 @@ class OAuthClient:
         return Session(user_id, user.get("email") if isinstance(user.get("email"), str) else None, access_token, payload.get("refresh_token"), now + SESSION_TTL_SECONDS, now, access_expires_at)
 
     def refresh(self, session: Session) -> Session:
+        """Refresh an expiring access token while preserving session ownership."""
+
         if not session.refresh_token:
             raise AuthError("authorization_revoked")
         body = urlencode({
@@ -143,6 +159,8 @@ class OAuthClient:
         return Session(session.user_id, session.email, access_token, session.refresh_token, session.expires_at, session.created_at, access_expires_at)
 
     def userinfo(self, access_token: str) -> dict:
+        """Fetch the authenticated user profile without exposing token data."""
+
         request = Request(USERINFO_ENDPOINT, headers={"Authorization": f"Bearer {access_token}"})
         try:
             payload = _safe_json(self._opener(request, timeout=10))
@@ -161,43 +179,59 @@ class SessionStore:
     """Process-local sessions until durable encrypted storage (#24) is added."""
 
     def __init__(self, secret: str, *, now=time.time):
+        """Create an in-memory session store with an injectable clock."""
+
         self._secret = secret.encode()
         self._now = now
         self._sessions: dict[str, Session] = {}
         self._states: dict[str, float] = {}
 
     def start(self) -> str:
+        """Create and retain a short-lived OAuth state value."""
+
         self._purge()
         state = secrets.token_urlsafe(24)
         self._states[state] = self._now() + STATE_TTL_SECONDS
         return state
 
     def consume_state(self, state: str) -> bool:
+        """Atomically validate and consume an OAuth state value."""
+
         self._purge()
         expiry = self._states.pop(state, None)
         return expiry is not None and expiry > self._now()
 
     def put(self, session: Session) -> str:
+        """Store a session and return its opaque browser identifier."""
+
         self._purge()
         session_id = secrets.token_urlsafe(32)
         self._sessions[session_id] = session
         return session_id
 
     def replace(self, session_id: str, session: Session) -> None:
+        """Replace an existing session without creating a new identifier."""
+
         if session_id in self._sessions:
             self._sessions[session_id] = session
 
     def get(self, session_id: str | None) -> Session | None:
+        """Return a live session for an opaque identifier, if present."""
+
         self._purge()
         if not session_id:
             return None
         return self._sessions.get(session_id)
 
     def delete(self, session_id: str | None) -> None:
+        """Remove a session identifier when one was supplied."""
+
         if session_id:
             self._sessions.pop(session_id, None)
 
     def cookie_header(self, session_id: str, *, secure: bool) -> str:
+        """Build the security attributes for an authenticated session cookie."""
+
         cookie = SimpleCookie()
         cookie[SESSION_COOKIE] = session_id
         morsel = cookie[SESSION_COOKIE]
@@ -210,6 +244,8 @@ class SessionStore:
         return morsel.OutputString()
 
     def clear_cookie_header(self, *, secure: bool) -> str:
+        """Build an expired cookie header that clears the browser session."""
+
         cookie = SimpleCookie()
         cookie[SESSION_COOKIE] = ""
         morsel = cookie[SESSION_COOKIE]
@@ -223,11 +259,15 @@ class SessionStore:
         return morsel.OutputString()
 
     def session_id_from_environ(self, environ: dict) -> str | None:
+        """Extract the configured session cookie from a WSGI environment."""
+
         cookie = SimpleCookie(environ.get("HTTP_COOKIE", ""))
         morsel = cookie.get(SESSION_COOKIE)
         return morsel.value if morsel else None
 
     def _purge(self) -> None:
+        """Discard expired OAuth states and sessions from process-local storage."""
+
         now = self._now()
         self._states = {state: expiry for state, expiry in self._states.items() if expiry > now}
         self._sessions = {sid: session for sid, session in self._sessions.items() if session.expires_at > now}

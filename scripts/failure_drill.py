@@ -40,9 +40,13 @@ INVOICE = {
 
 
 def call(app, path: str, body: bytes = b"") -> str:
+    """Call one local WSGI endpoint and return only its HTTP status."""
+
     captured: dict[str, str] = {}
 
     def start_response(status, _headers):
+        """Capture the WSGI status for the drill assertion."""
+
         captured["status"] = status
 
     app(
@@ -59,6 +63,8 @@ def call(app, path: str, body: bytes = b"") -> str:
 
 
 def main() -> int:
+    """Run the failure, cleanup, metrics, and recovery checks."""
+
     config = load_config(CONFIG).config
     failing_provider = FixtureDocumentProvider(failures={"export_pdf": "timeout"})
     failing_app = create_app(config, failing_provider)

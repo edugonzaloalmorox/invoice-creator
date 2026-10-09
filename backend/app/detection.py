@@ -7,7 +7,12 @@ from .provider import DocumentProvider, DocumentSnapshot, ProviderError
 
 
 def detect_fields(provider: DocumentProvider, template_id: str) -> dict:
-    """Return reviewable mapped fields without exposing unrelated document text."""
+    """Return reviewable mapped fields without exposing unrelated document text.
+
+    Alias placeholders are resolved to their canonical field metadata, and
+    repeatable placeholders remain valid when the template intentionally uses
+    one field in multiple display locations.
+    """
 
     snapshot = provider.read_template(template_id)
     if snapshot.document_id != template_id or snapshot.version != TEMPLATE_VERSION:

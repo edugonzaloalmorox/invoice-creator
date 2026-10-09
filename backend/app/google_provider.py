@@ -106,6 +106,8 @@ def _provider_error(operation: str, error: Exception) -> ProviderError:
 
 
 def _text_run_content(element: Mapping[str, Any]) -> str:
+    """Return the text content of a Google Docs text-run element."""
+
     text_run = element.get("textRun", {})
     return str(text_run.get("content", ""))
 
@@ -206,6 +208,8 @@ class GoogleDocumentProvider:
         credentials_loader: Callable[[str], Any] = load_service_account_credentials,
         credentials=None,
     ):
+        """Configure Google Docs and Drive clients with injectable dependencies."""
+
         self.credential_reference = credential_reference
         self.timeout_seconds = max(connect_timeout_seconds, read_timeout_seconds)
         self._drive_service = drive_service
@@ -225,6 +229,8 @@ class GoogleDocumentProvider:
         connect_timeout_seconds: float = 3,
         read_timeout_seconds: float = 10,
     ):
+        """Create a provider authorized with the signed-in user's OAuth token."""
+
         credentials = user_credentials.Credentials(
             token=access_token,
             refresh_token=refresh_token,
@@ -241,6 +247,8 @@ class GoogleDocumentProvider:
         )
 
     def _services(self):
+        """Build or return cached Drive and Docs service clients."""
+
         if self._drive_service is not None and self._docs_service is not None:
             return self._drive_service, self._docs_service
         try:
@@ -255,6 +263,8 @@ class GoogleDocumentProvider:
         return self._drive_service, self._docs_service
 
     def read_template(self, template_id: str) -> DocumentSnapshot:
+        """Read and normalize a Google Docs template without modifying it."""
+
         try:
             drive, docs = self._services()
             # ``drive.file`` only exposes files explicitly opened or created by
@@ -278,6 +288,8 @@ class GoogleDocumentProvider:
             raise _provider_error("read_template", error) from error
 
     def copy_document(self, template_id: str, title: str) -> str:
+        """Create an isolated temporary copy and return its opaque document ID."""
+
         try:
             drive, _ = self._services()
             result = (
@@ -295,6 +307,8 @@ class GoogleDocumentProvider:
             raise _provider_error("copy_document", error) from error
 
     def replace_values(self, document_id: str, replacements: Mapping[str, str]) -> None:
+        """Replace mapped placeholders in a temporary document copy."""
+
         try:
             _, docs = self._services()
             current = docs.documents().get(documentId=document_id, includeTabsContent=True).execute(num_retries=0)
@@ -339,6 +353,8 @@ class GoogleDocumentProvider:
             raise _provider_error("replace_values", error) from error
 
     def verify_replacements(self, document_id: str, replacements: Mapping[str, str]) -> None:
+        """Re-read a temporary document and confirm every replacement applied."""
+
         try:
             _, docs = self._services()
             document = docs.documents().get(documentId=document_id, includeTabsContent=True).execute(num_retries=0)
@@ -352,6 +368,8 @@ class GoogleDocumentProvider:
             raise _provider_error("verify_replacements", error) from error
 
     def export_pdf(self, document_id: str) -> bytes:
+        """Export a temporary Google document as PDF bytes."""
+
         try:
             drive, _ = self._services()
             pdf = drive.files().export(fileId=document_id, mimeType="application/pdf").execute(num_retries=0)
@@ -364,6 +382,8 @@ class GoogleDocumentProvider:
             raise _provider_error("export_pdf", error) from error
 
     def delete_document(self, document_id: str) -> None:
+        """Delete a temporary Google document after generation completes."""
+
         try:
             drive, _ = self._services()
             drive.files().delete(fileId=document_id, supportsAllDrives=True).execute(num_retries=0)

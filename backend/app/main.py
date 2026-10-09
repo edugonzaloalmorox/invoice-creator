@@ -24,6 +24,8 @@ logger = logging.getLogger(__name__)
 
 
 def _request_id() -> str:
+    """Generate a non-sensitive identifier for response correlation."""
+
     return f"req_{secrets.token_urlsafe(12)}"
 
 
@@ -51,6 +53,8 @@ def _origin_allowed(request_origin: str, configured_origin: str, environment: st
 
 
 def _json_response(start_response: Callable, status: str, payload: dict, request_id: str) -> list[bytes]:
+    """Serialize a no-store JSON response with bounded request metadata."""
+
     body = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     start_response(
         status,
@@ -73,6 +77,8 @@ def _error_response(
     *,
     fields: list[dict] | None = None,
 ) -> list[bytes]:
+    """Build a safe structured API error response."""
+
     error = {"code": code, "message": message, "request_id": request_id}
     if fields is not None:
         error["fields"] = fields
@@ -80,6 +86,8 @@ def _error_response(
 
 
 def _decimal_string(value) -> str:
+    """Format a decimal without unnecessary trailing zeroes."""
+
     rendered = format(value, "f")
     if "." in rendered:
         rendered = rendered.rstrip("0").rstrip(".")
@@ -87,6 +95,8 @@ def _decimal_string(value) -> str:
 
 
 def _invoice_payload(invoice: InvoiceInput) -> dict:
+    """Map a validated invoice to the stable API/provider field payload."""
+
     total = format_total(invoice)
     return {
         "invoice_number": invoice.invoice_number,
@@ -114,6 +124,8 @@ def _invoice_payload(invoice: InvoiceInput) -> dict:
 
 
 def _read_json_body(environ: dict, maximum: int) -> tuple[dict | None, tuple[str, str, str] | None]:
+    """Read and validate a bounded JSON object from a WSGI request."""
+
     content_type = environ.get("CONTENT_TYPE", "").split(";", 1)[0].strip().lower()
     if content_type != "application/json":
         return None, ("400 Bad Request", "invalid_json", "Request body must be JSON.")
@@ -138,6 +150,8 @@ def _read_json_body(environ: dict, maximum: int) -> tuple[dict | None, tuple[str
 
 
 def _validation_response(start_response: Callable, result, request_id: str) -> list[bytes] | None:
+    """Return a validation response when a validation result is invalid."""
+
     if result.valid:
         return None
     fields = [{"name": error.name, "code": error.code, "message": error.message} for error in result.errors]
@@ -148,6 +162,8 @@ class Application:
     """Small WSGI application with configuration captured at startup."""
 
     def __init__(self, config_result: ConfigLoad, provider=None, metrics: Metrics | None = None):
+        """Initialize application state, provider selection, limits, and sessions."""
+
         self.config_result = config_result
         self.provider = provider or FixtureDocumentProvider()
         self.metrics = metrics or Metrics()
@@ -174,12 +190,16 @@ class Application:
         )
 
     def __call__(self, environ: dict, start_response: Callable) -> list[bytes]:
+        """Route one WSGI request and return its response body."""
+
         request_id = _request_id()
         path = environ.get("PATH_INFO", "")
         started_at = time.monotonic()
         original_start_response = start_response
 
         def recording_start_response(status, headers):
+            """Record response status and duration before delegating to WSGI."""
+
             self.metrics.record(path, status.split(" ", 1)[0][:1], (time.monotonic() - started_at) * 1000)
             return original_start_response(status, headers)
 
@@ -194,6 +214,8 @@ class Application:
             cors_original_start_response = start_response
 
             def cors_start_response(status, headers):
+                """Add the validated CORS headers to a response."""
+
                 headers = list(headers) + [("Access-Control-Allow-Origin", request_origin), ("Access-Control-Allow-Credentials", "true"), ("Vary", "Origin")]
                 cors_original_start_response(status, headers)
 
@@ -256,6 +278,8 @@ class Application:
         return _json_response(start_response, "404 Not Found", {"error": {"code": "not_found", "message": "Resource not found.", "request_id": request_id}}, request_id)
 
     def _allow_generation(self, environ: dict) -> bool:
+        """Apply the bounded per-client generation rate limit."""
+
         now = time.monotonic()
         client = environ.get("REMOTE_ADDR", "unknown")
         if client not in self._generation_attempts and len(self._generation_attempts) >= self._max_generation_clients:
@@ -270,6 +294,8 @@ class Application:
         return True
 
     def _template_id(self, environ: dict) -> str | None:
+        """Resolve and authorize the selected template for this request."""
+
         selection = environ.get("HTTP_X_TEMPLATE_SELECTION")
         if selection:
             selected = self._template_selections.get(selection)
@@ -283,6 +309,8 @@ class Application:
         return self.config_result.config.template_id if self.config_result.config else None
 
     def _session(self, environ: dict):
+        """Load a live session and refresh its access token when necessary."""
+
         if self._sessions is None:
             return None
         session_id = self._sessions.session_id_from_environ(environ)
@@ -301,6 +329,8 @@ class Application:
         return session
 
     def _provider_for(self, environ: dict):
+        """Select the fixture, service-account, or user-authorized provider."""
+
         if not self._use_user_google_provider or self._oauth is None:
             return self.provider
         session = self._session(environ)
@@ -318,14 +348,20 @@ class Application:
         )
 
     def _require_session(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes] | None:
+        """Return an auth error response when a protected request lacks a session."""
+
         if self._sessions is not None and self._session(environ) is None:
             return _error_response(start_response, "401 Unauthorized", "authentication_required", "Sign in to continue.", request_id)
         return None
 
     def _secure_cookie(self) -> bool:
+        """Return whether cookies must carry the Secure attribute."""
+
         return bool(self.config_result.config and self.config_result.config.environment.lower() == "production")
 
     def _auth_start(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
+        """Start OAuth authorization and redirect the browser to Google."""
+
         if environ.get("REQUEST_METHOD") != "GET":
             return _error_response(start_response, "405 Method Not Allowed", "method_not_allowed", "Only GET is supported.", request_id)
         if self._oauth is None or self._sessions is None:
@@ -336,6 +372,8 @@ class Application:
         return [b""]
 
     def _auth_callback(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
+        """Validate an OAuth callback, exchange its code, and set a session cookie."""
+
         if environ.get("REQUEST_METHOD") != "GET":
             return _error_response(start_response, "405 Method Not Allowed", "method_not_allowed", "Only GET is supported.", request_id)
         if self._oauth is None or self._sessions is None:
@@ -364,6 +402,8 @@ class Application:
         return [b""]
 
     def _auth_logout(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
+        """Delete the current session and expire its browser cookie."""
+
         if environ.get("REQUEST_METHOD") != "POST":
             return _error_response(start_response, "405 Method Not Allowed", "method_not_allowed", "Only POST is supported.", request_id)
         if self._sessions is not None:
@@ -374,6 +414,8 @@ class Application:
         return [b""]
 
     def _session_status(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
+        """Report authentication state without returning access tokens."""
+
         if environ.get("REQUEST_METHOD") != "GET":
             return _error_response(start_response, "405 Method Not Allowed", "method_not_allowed", "Only GET is supported.", request_id)
         if self._sessions is None:
@@ -384,6 +426,8 @@ class Application:
         return _json_response(start_response, "200 OK", {"authenticated": True, "auth_required": True, "user": {"id": session.user_id, "email": session.email}}, request_id)
 
     def _connect_template(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
+        """Validate a pasted template link and return its safe field map."""
+
         required = self._require_session(environ, start_response, request_id)
         if required:
             return required
@@ -415,6 +459,8 @@ class Application:
         return _json_response(start_response, "200 OK", {"selection_token": selection, **fields}, request_id)
 
     def _preview(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
+        """Validate invoice input and return the authoritative calculation."""
+
         required = self._require_session(environ, start_response, request_id)
         if required:
             return required
@@ -457,6 +503,8 @@ class Application:
         )
 
     def _generate(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
+        """Fill an isolated document copy, verify it, export PDF, and clean up."""
+
         required = self._require_session(environ, start_response, request_id)
         if required:
             return required
@@ -557,6 +605,8 @@ class Application:
         return "502 Bad Gateway", "provider_error", "The document provider could not complete the request. Try again."
 
     def _template_fields(self, environ: dict, start_response: Callable, request_id: str) -> list[bytes]:
+        """Return the configured template's sanitized field metadata."""
+
         if not self.config_result.ready:
             return _error_response(start_response, "503 Service Unavailable", "service_not_ready", "Service configuration is unavailable.", request_id)
         try:

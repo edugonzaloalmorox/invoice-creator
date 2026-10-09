@@ -25,6 +25,8 @@ SYNTHETIC_INVOICE = {
 
 
 def request_once(base_url: str, endpoint: str, timeout: float) -> tuple[int, float]:
+    """Send one synthetic request and return status plus elapsed milliseconds."""
+
     body = json.dumps(SYNTHETIC_INVOICE).encode()
     request = Request(
         f"{base_url.rstrip('/')}{endpoint}",
@@ -45,6 +47,8 @@ def request_once(base_url: str, endpoint: str, timeout: float) -> tuple[int, flo
 
 
 def run(base_url: str, endpoint: str, requests: int, concurrency: int, timeout: float) -> dict:
+    """Run bounded concurrent requests and summarize their outcomes."""
+
     with ThreadPoolExecutor(max_workers=concurrency) as executor:
         results = list(executor.map(lambda _: request_once(base_url, endpoint, timeout), range(requests)))
     statuses: dict[str, int] = {}
@@ -66,6 +70,8 @@ def run(base_url: str, endpoint: str, requests: int, concurrency: int, timeout: 
 
 
 def main() -> int:
+    """Parse load-test options, run the check, and print its safe summary."""
+
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base-url", default="http://127.0.0.1:8000")
     parser.add_argument("--endpoint", choices=("preview", "generate"), default="preview")

@@ -1,3 +1,4 @@
+/** Field definitions shared by the invoice form and request serializer. */
 export const invoiceFields = [
   { name: "invoice_number", label: "Invoice number", type: "text", required: true, autocomplete: "off" },
   { name: "service_start_date", label: "Invoice date", type: "date", required: true },
@@ -19,6 +20,7 @@ export const invoiceFields = [
 
 const initialValues = Object.fromEntries(invoiceFields.map(({ name }) => [name, ""]));
 
+/** Create stateful form controls that validate through the preview callback. */
 export function createInvoiceFormController({ preview } = {}) {
   if (typeof preview !== "function") throw new TypeError("A preview function is required");
   const state = { values: { ...initialValues }, errors: {}, status: "idle", preview: null };
@@ -72,6 +74,7 @@ export function createInvoiceFormController({ preview } = {}) {
   };
 }
 
+/** Connect a Google Docs template and return its sanitized field metadata. */
 export async function requestTemplate(url, { fetchImpl = globalThis.fetch } = {}) {
   const response = await fetchImpl(`${apiOrigin()}/api/template/connect`, {
     method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url }),
@@ -80,17 +83,20 @@ export async function requestTemplate(url, { fetchImpl = globalThis.fetch } = {}
   return response.ok ? { ok: true, ...payload } : { ok: false, error: payload.error };
 }
 
+/** Read the current authentication state from the backend. */
 export async function requestSession({ fetchImpl = globalThis.fetch } = {}) {
   const response = await fetchImpl(`${apiOrigin()}/api/session`, { credentials: "include" });
   const payload = await response.json();
   return response.ok ? payload : { authenticated: false, auth_required: true };
 }
 
+/** End the current authenticated browser session. */
 export async function requestLogout({ fetchImpl = globalThis.fetch } = {}) {
   const response = await fetchImpl(`${apiOrigin()}/auth/logout`, { method: "POST", credentials: "include" });
   return response.ok;
 }
 
+/** Render and wire the template-link connection screen. */
 export function renderTemplateConnection(root, { connect = requestTemplate, onConnected, user = null, logout } = {}) {
   let url = "";
   let status = "idle";
@@ -124,6 +130,7 @@ export function renderTemplateConnection(root, { connect = requestTemplate, onCo
   return { getValue: () => url, render };
 }
 
+/** Submit invoice values for server-side validation and calculation. */
 export async function requestPreview(values, { fetchImpl = globalThis.fetch, templateToken } = {}) {
   const response = await fetchImpl(`${apiOrigin()}/api/invoices/preview`, {
     method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(templateToken ? { "X-Template-Selection": templateToken } : {}) }, body: JSON.stringify(values),
@@ -132,6 +139,7 @@ export async function requestPreview(values, { fetchImpl = globalThis.fetch, tem
   return response.ok ? { ok: true, ...payload } : { ok: false, error: payload.error };
 }
 
+/** Resolve the backend origin for the current page or local development. */
 export function apiOrigin() {
   if (globalThis.INVOICE_API_ORIGIN) return globalThis.INVOICE_API_ORIGIN;
   const pageLocation = globalThis.location;
@@ -139,10 +147,12 @@ export function apiOrigin() {
   return "http://localhost:8000";
 }
 
+/** Escape user-controlled text before inserting it into HTML. */
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
 }
 
+/** Render one accessible invoice form control and any field error. */
 function fieldMarkup(field, state) {
   const error = state.errors[field.name];
   if (field.type === "select") {
@@ -160,6 +170,7 @@ function fieldMarkup(field, state) {
   return `<div class="field"><label for="${field.name}">${field.label}${field.required ? " *" : ""}</label><input ${attributes}>${error ? `<p id="${field.name}-error" class="error" role="alert">${escapeHtml(error)}</p>` : ""}</div>`;
 }
 
+/** Render the invoice form and return its state controller. */
 export function renderInvoiceForm(root, { preview = requestPreview } = {}) {
   const controller = createInvoiceFormController({ preview });
   function render(state) {

@@ -28,6 +28,8 @@ class ProviderError(RuntimeError):
     """Safe provider failure classified by operation and stable error code."""
 
     def __init__(self, operation: str, code: str, *, retryable: bool = False, field: str | None = None):
+        """Create a classified provider failure without exposing document data."""
+
         self.operation = operation
         self.code = code
         self.retryable = retryable
@@ -46,17 +48,29 @@ class DocumentProvider(Protocol):
     ``ProviderError``.
     """
 
-    def read_template(self, template_id: str) -> DocumentSnapshot: ...
+    def read_template(self, template_id: str) -> DocumentSnapshot:
+        """Read and normalize a template snapshot."""
+        ...
 
-    def copy_document(self, template_id: str, title: str) -> str: ...
+    def copy_document(self, template_id: str, title: str) -> str:
+        """Create an isolated document copy."""
+        ...
 
-    def replace_values(self, document_id: str, replacements: Mapping[str, str]) -> None: ...
+    def replace_values(self, document_id: str, replacements: Mapping[str, str]) -> None:
+        """Apply field replacements to a temporary copy."""
+        ...
 
-    def verify_replacements(self, document_id: str, replacements: Mapping[str, str]) -> None: ...
+    def verify_replacements(self, document_id: str, replacements: Mapping[str, str]) -> None:
+        """Confirm field replacements were applied."""
+        ...
 
-    def export_pdf(self, document_id: str) -> bytes: ...
+    def export_pdf(self, document_id: str) -> bytes:
+        """Export a temporary copy as PDF bytes."""
+        ...
 
-    def delete_document(self, document_id: str) -> None: ...
+    def delete_document(self, document_id: str) -> None:
+        """Delete a temporary document copy."""
+        ...
 
 
 class FixtureDocumentProvider:
@@ -69,6 +83,8 @@ class FixtureDocumentProvider:
         failures: Mapping[str, str] | None = None,
         empty_pdf: bool = False,
     ):
+        """Initialize an isolated in-memory template and failure controls."""
+
         self._template_id = "fixture-template"
         self._template = DocumentSnapshot(
             self._template_id,
@@ -83,11 +99,15 @@ class FixtureDocumentProvider:
         self.calls: list[tuple[str, str]] = []
 
     def _check_failure(self, operation: str) -> None:
+        """Raise the configured synthetic failure for an operation, if any."""
+
         if operation in self._failures:
             code = self._failures[operation]
             raise ProviderError(operation, code, retryable=code in {"timeout", "unavailable"})
 
     def read_template(self, template_id: str) -> DocumentSnapshot:
+        """Return the sanitized master template snapshot."""
+
         self.calls.append(("read_template", template_id))
         self._check_failure("read_template")
         if template_id != self._template_id:
@@ -95,6 +115,8 @@ class FixtureDocumentProvider:
         return self._template
 
     def copy_document(self, template_id: str, title: str) -> str:
+        """Create an isolated fixture copy of the master template."""
+
         self.calls.append(("copy_document", template_id))
         self._check_failure("copy_document")
         if template_id != self._template_id:
@@ -107,6 +129,8 @@ class FixtureDocumentProvider:
         return document_id
 
     def replace_values(self, document_id: str, replacements: Mapping[str, str]) -> None:
+        """Apply replacements to one fixture copy while enforcing field mapping."""
+
         self.calls.append(("replace_values", document_id))
         self._check_failure("replace_values")
         document = self._copies.get(document_id)
@@ -123,6 +147,8 @@ class FixtureDocumentProvider:
         self._copies[document_id] = DocumentSnapshot(document.document_id, document.title, document.fields, values)
 
     def verify_replacements(self, document_id: str, replacements: Mapping[str, str]) -> None:
+        """Confirm that every requested replacement is present in the copy."""
+
         self.calls.append(("verify_replacements", document_id))
         self._check_failure("verify_replacements")
         document = self._copies.get(document_id)
@@ -133,6 +159,8 @@ class FixtureDocumentProvider:
                 raise ProviderError("verify_replacements", "replacement_not_applied")
 
     def export_pdf(self, document_id: str) -> bytes:
+        """Return deterministic PDF-like bytes for a fixture copy."""
+
         self.calls.append(("export_pdf", document_id))
         self._check_failure("export_pdf")
         if document_id not in self._copies:
@@ -143,6 +171,8 @@ class FixtureDocumentProvider:
         return (f"%PDF-1.4\n% fixture invoice\n% {rendered}\n%%EOF\n").encode()
 
     def delete_document(self, document_id: str) -> None:
+        """Delete a fixture copy and classify missing-copy failures."""
+
         self.calls.append(("delete_document", document_id))
         self._check_failure("delete_document")
         if document_id not in self._copies:

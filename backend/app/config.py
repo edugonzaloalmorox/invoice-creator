@@ -53,20 +53,28 @@ class AppConfig:
 
     @property
     def oauth_configured(self) -> bool:
+        """Return whether all OAuth-dependent application settings are present."""
+
         return bool(self.oauth_client_id)
 
 
 @dataclass(frozen=True, slots=True)
 class ConfigLoad:
+    """Result of loading configuration, including safe validation errors."""
+
     config: AppConfig | None
     errors: tuple[str, ...]
 
     @property
     def ready(self) -> bool:
+        """Return whether a complete usable configuration was loaded."""
+
         return self.config is not None and not self.errors
 
 
 def _clean(value: str) -> str:
+    """Trim whitespace and one matching pair of surrounding quotes."""
+
     value = value.strip()
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
         return value[1:-1].strip()
@@ -74,6 +82,8 @@ def _clean(value: str) -> str:
 
 
 def _required(values: dict[str, str], name: str, errors: list[str]) -> str:
+    """Read a required configuration value and record missing-value errors."""
+
     value = _clean(values.get(name, ""))
     if not value:
         errors.append(f"{name} is required")
@@ -83,6 +93,8 @@ def _required(values: dict[str, str], name: str, errors: list[str]) -> str:
 def _positive_number(
     values: dict[str, str], name: str, errors: list[str], *, maximum: float
 ) -> float:
+    """Parse a bounded positive floating-point configuration value."""
+
     raw = _required(values, name, errors)
     if not raw:
         return 0.0
@@ -99,6 +111,8 @@ def _positive_number(
 def _positive_integer(
     values: dict[str, str], name: str, errors: list[str], *, maximum: int
 ) -> int:
+    """Parse a bounded positive integer configuration value."""
+
     raw = _required(values, name, errors)
     if not raw:
         return 0

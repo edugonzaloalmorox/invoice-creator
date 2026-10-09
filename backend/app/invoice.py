@@ -25,6 +25,8 @@ _BIC_RE = re.compile(r"^[A-Z0-9]{8}(?:[A-Z0-9]{3})?$")
 
 @dataclass(frozen=True, slots=True)
 class InvoiceInput:
+    """Validated invoice values used by preview and document generation."""
+
     invoice_number: str
     service_start_date: str
     service_end_date: str | None
@@ -43,6 +45,8 @@ class InvoiceInput:
 
 @dataclass(frozen=True, slots=True)
 class ValidationIssue:
+    """Safe field-level validation failure returned to API callers."""
+
     name: str
     code: str
     message: str
@@ -50,15 +54,21 @@ class ValidationIssue:
 
 @dataclass(frozen=True, slots=True)
 class InvoiceValidation:
+    """Validation result containing either an invoice or safe issues."""
+
     value: InvoiceInput | None
     errors: tuple[ValidationIssue, ...]
 
     @property
     def valid(self) -> bool:
+        """Return whether validation produced an error-free invoice."""
+
         return self.value is not None and not self.errors
 
 
 def _issue(name: str, code: str, message: str) -> ValidationIssue:
+    """Construct a normalized validation issue."""
+
     return ValidationIssue(name, code, message)
 
 
@@ -70,6 +80,8 @@ def _text(
     required: bool = False,
     maximum: int = MAX_TEXT_LENGTH,
 ) -> str | None:
+    """Read, normalize, and validate a bounded text field."""
+
     raw = data.get(name)
     if raw is None:
         if required:
@@ -93,6 +105,8 @@ def _date_value(
     *,
     required: bool,
 ) -> date | None:
+    """Parse an optional or required ISO calendar date from input data."""
+
     raw = data.get(name)
     if raw is None or (isinstance(raw, str) and not raw.strip()):
         if required:
@@ -116,6 +130,8 @@ def _decimal_value(
     *,
     maximum: Decimal,
 ) -> Decimal | None:
+    """Parse a non-negative decimal with precision and range validation."""
+
     raw = data.get(name)
     if raw is None or (isinstance(raw, str) and not raw.strip()):
         errors.append(_issue(name, "required", "This field is required."))
