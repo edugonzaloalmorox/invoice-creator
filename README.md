@@ -1,13 +1,32 @@
 # Invoice Filler
 
-Invoice Filler is a small browser application for filling invoices automatically. It reviews invoice fields,
-calculates a total and downloads a generated PDF with the final invoice. The
-application uses a deterministic in-memory fixture provider for local development
-and credential-free tests. A Google Docs provider is available for a secret-mounted
-service-account credential and can fill an isolated copy of the selected template.
+Creating the same invoice over and over is easy to get wrong. Copying dates,
+bank details, and daily rates between documents can introduce typos, leave an
+old total in place, or accidentally overwrite the original template.
 
-The application currently supports one configured template, does not persist
-invoice data, and is not a production deployment.
+Invoice Filler gives you one guided place to enter the invoice details, checks
+the values, calculates the total, and produces a PDF from your Google Docs
+template. It fills a temporary copy of the template, so your master document is
+left unchanged.
+
+## How it works
+
+1. Connect the Google Docs template you want to use.
+2. Enter the invoice details in the browser.
+3. Review the calculated total and any template warnings.
+4. Generate and download the completed PDF.
+
+The backend is responsible for validation, calculations, template selection,
+and generated output. This keeps the total consistent and prevents the browser
+from choosing an arbitrary document.
+
+This project is currently intended for local development and evaluation. It
+supports one configured template, does not persist invoice data, and is not a
+production deployment.
+
+For local development without Google credentials, the app uses a deterministic
+in-memory fixture provider. A Google Docs provider is also available when a
+secret-mounted service-account credential is configured.
 
 Optional Google user sign-in is enabled when all OAuth variables are configured.
 The configured scopes must include `openid` and the Docs read scope. The pasted
@@ -16,6 +35,8 @@ link flow reads arbitrary documents the signed-in user can access, while
 requires signing in again and granting consent.
 
 ## Quick start
+
+### 1. Install the prerequisites
 
 Requirements:
 
@@ -31,20 +52,30 @@ uv run pytest
 (cd frontend && npm test)
 ```
 
+### 2. Start the app
+
 Start both local servers with the development defaults:
 
 ```sh
 make run
 ```
 
-To use a real Google template locally, copy [`.env.example`](.env.example) to
-`.env`, set `GOOGLE_CREDENTIALS_REFERENCE` to the absolute path of the
-service-account JSON file, and then run `make run`. `.env` is ignored by Git;
-never commit the JSON file or its contents.
-
 Then open [http://localhost:3000](http://localhost:3000). `make run` starts the
-backend on `http://localhost:8000` and serves the static frontend on port 3000.
+backend on `http://localhost:8000` and serves the browser app on port 3000.
 It stops existing processes listening on those two development ports first.
+
+For a first run, the local fixture configuration is enough: you can explore
+the invoice form and run the tests without a Google account or a real template.
+
+### 3. Use a real Google Docs template (optional)
+
+Copy [`.env.example`](.env.example) to `.env`, set
+`GOOGLE_CREDENTIALS_REFERENCE` to the absolute path of the service-account JSON
+file, and run `make run`. Then paste your Google Docs template link into the
+app. The service account must have access to that document.
+
+`.env` is ignored by Git. Never commit the JSON file, its contents, real invoice
+data, bank details, or document IDs.
 
 To start the services separately:
 
